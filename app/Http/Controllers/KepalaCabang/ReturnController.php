@@ -79,6 +79,23 @@ class ReturnController extends Controller
             // Kembalikan stok
             $stock = Stock::firstOrCreate(['branch_id' => $return->branch_id, 'product_id' => $return->product_id], ['quantity' => 0]);
             $stock->increment('quantity', $return->quantity);
+
+            // Kurangi dari penjualan agar laporan akurat
+            $saleDetail = SaleDetail::where('sale_id', $return->sale_id)->where('product_id', $return->product_id)->first();
+            if ($saleDetail) {
+                $deductQty = $return->quantity;
+                $deductPrice = $deductQty * $saleDetail->price;
+
+                $saleDetail->quantity -= $deductQty;
+                $saleDetail->subtotal -= $deductPrice;
+                $saleDetail->save();
+
+                $sale = Sale::find($return->sale_id);
+                if ($sale) {
+                    $sale->total_price -= $deductPrice;
+                    $sale->save();
+                }
+            }
         });
 
         return redirect()->route('kepala-cabang.returns.index')->with('success', 'Retur berhasil disetujui dan stok dikembalikan.');

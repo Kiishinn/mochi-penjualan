@@ -544,11 +544,23 @@
             margin-top: 0.375rem;
         }
 
+        /* Responsive grid specifically for charts */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
         }
+        @media (max-width: 900px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 640px) {
             .form-grid { grid-template-columns: 1fr; }
         }

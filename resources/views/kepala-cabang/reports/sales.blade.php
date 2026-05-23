@@ -98,6 +98,7 @@
                         <th>Waktu</th>
                         <th>No Invoice</th>
                         <th>Kasir</th>
+                        <th>Produk Dibeli</th>
                         <th style="text-align: right;">Total Harga</th>
                     </tr>
                 </thead>
@@ -107,11 +108,19 @@
                             <td>{{ date('d/m/Y H:i', strtotime($sale->transaction_date)) }}</td>
                             <td><div style="font-weight: 500; color: var(--text-primary);">{{ $sale->invoice_number }}</div></td>
                             <td>{{ $sale->user->name ?? '-' }}</td>
+                            <td>
+                                @foreach($sale->details as $detail)
+                                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                                        <span style="font-weight: 600; color: var(--text-primary);">{{ $detail->quantity }}x</span> {{ $detail->product->name ?? 'Produk Dihapus' }} 
+                                        (Rp {{ number_format($detail->subtotal, 0, ',', '.') }})
+                                    </div>
+                                @endforeach
+                            </td>
                             <td style="text-align: right; font-weight: 600; color: var(--accent);">Rp {{ number_format($sale->total_price, 0, ',', '.') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" style="text-align: center; padding: 2rem;">Belum ada data pada periode ini.</td>
+                            <td colspan="5" style="text-align: center; padding: 2rem;">Belum ada data pada periode ini.</td>
                         </tr>
                     @endforelse
                 </tbody>

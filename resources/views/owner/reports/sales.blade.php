@@ -52,7 +52,7 @@
     </div>
 
     <!-- Charts Section -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <div class="chart-grid" style="gap: 1.5rem; margin-bottom: 1.5rem;">
         <div class="card" style="margin-bottom: 0;">
             <div class="card-header">
                 <h3>Tren Penjualan</h3>
@@ -134,6 +134,7 @@
                         <th>No Invoice</th>
                         <th>Cabang</th>
                         <th>Kasir</th>
+                        <th>Produk Dibeli</th>
                         <th style="text-align: right;">Total Harga</th>
                     </tr>
                 </thead>
@@ -144,11 +145,19 @@
                             <td><div style="font-weight: 500; color: var(--text-primary);">{{ $sale->invoice_number }}</div></td>
                             <td>{{ $sale->branch->name ?? '-' }}</td>
                             <td>{{ $sale->user->name ?? '-' }}</td>
+                            <td>
+                                @foreach($sale->details as $detail)
+                                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                                        <span style="font-weight: 600; color: var(--text-primary);">{{ $detail->quantity }}x</span> {{ $detail->product->name ?? 'Produk Dihapus' }} 
+                                        (Rp {{ number_format($detail->subtotal, 0, ',', '.') }})
+                                    </div>
+                                @endforeach
+                            </td>
                             <td style="text-align: right; font-weight: 600; color: var(--accent);">Rp {{ number_format($sale->total_price, 0, ',', '.') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 2rem;">Belum ada data pada periode ini.</td>
+                            <td colspan="6" style="text-align: center; padding: 2rem;">Belum ada data pada periode ini.</td>
                         </tr>
                     @endforelse
                 </tbody>
