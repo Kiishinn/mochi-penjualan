@@ -1,57 +1,66 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Buat Perpindahan Barang')
-@section('page-title', 'Buat Perpindahan Barang')
+@section('title', 'Buat Permintaan Barang')
+@section('page-title', 'Buat Permintaan Stok Baru')
 
 @section('content')
     <div class="card" style="max-width: 900px; margin: 0 auto;">
         <div class="card-header">
-            <h3>Form Perpindahan Barang (Batch Input)</h3>
+            <h3>Pilih Cabang Sumber</h3>
         </div>
 
-        <form action="{{ route('kepala-cabang.stock-transfers.store') }}" method="POST" id="batch-form">
+        <!-- Form untuk memilih cabang sumber (mengubah URL) -->
+        <form method="GET" action="{{ route('kepala-cabang.stock-transfers.create') }}" style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="source_branch_id">Pilih Cabang yang Ingin Dimintai Stok <span style="color: #ef4444;">*</span></label>
+                <select id="source_branch_id" name="source_branch_id" class="form-control searchable-select" required onchange="this.form.submit()">
+                    <option value="">-- Pilih Cabang --</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" @if($selectedBranch == $branch->id) selected @endif>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+                <div class="form-error" style="color: var(--text-muted); margin-top: 0.5rem;">
+                    Pilih cabang untuk melihat ketersediaan stok mereka.
+                </div>
+            </div>
+        </form>
+
+        @if($selectedBranch)
+        <!-- Form utama untuk mengirim permintaan -->
+        <form action="{{ route('kepala-cabang.stock-transfers.store') }}" method="POST" id="request-form" style="padding: 1.5rem;">
             @csrf
+            <input type="hidden" name="from_branch_id" value="{{ $selectedBranch }}">
             
             <div class="form-grid" style="margin-bottom: 2rem;">
                 <div class="form-group">
-                    <label for="date">Waktu Pemindahan <span style="color: #ef4444;">*</span></label>
+                    <label for="date">Tanggal Pengajuan <span style="color: #ef4444;">*</span></label>
                     <input type="datetime-local" id="date" name="date" class="form-control" value="{{ old('date', date('Y-m-d\TH:i')) }}" required>
                     @error('date') <div class="form-error">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="form-group">
-                    <label for="to_branch_id">Cabang Tujuan <span style="color: #ef4444;">*</span></label>
-                    <select id="to_branch_id" name="to_branch_id" class="form-control searchable-select" required>
-                        <option value="">-- Pilih Cabang Tujuan --</option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}" @if(old('to_branch_id') == $branch->id) selected @endif>{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('to_branch_id') <div class="form-error">{{ $message }}</div> @enderror
-                </div>
-
                 <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="note">Keterangan Umum (Opsional)</label>
-                    <textarea id="note" name="note" class="form-control" rows="2" placeholder="Contoh: Pengiriman stok ke cabang baru">{{ old('note') }}</textarea>
-                    @error('note') <div class="form-error">{{ $message }}</div> @enderror
+                    <label for="requester_note">Pesan / Alasan Meminta Stok (Opsional)</label>
+                    <textarea id="requester_note" name="requester_note" class="form-control" rows="2" placeholder="Contoh: Stok kami habis karena ada event, mohon segera dikirim">{{ old('requester_note') }}</textarea>
+                    @error('requester_note') <div class="form-error">{{ $message }}</div> @enderror
                 </div>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 1.5rem;">
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h4 style="font-weight: 600;">Daftar Barang</h4>
+                <h4 style="font-weight: 600;">Daftar Barang yang Diminta</h4>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addRow()">+ Tambah Baris</button>
             </div>
 
-            @error('items') <div class="alert alert-error" style="margin-bottom: 1rem;">{{ $message }}</div> @enderror
+            @error('items') <div class="alert alert-error" style="margin-bottom: 1rem; color: var(--danger);">{{ $message }}</div> @enderror
+            @error('error') <div class="alert alert-error" style="margin-bottom: 1rem; color: var(--danger);">{{ $message }}</div> @enderror
 
             <div style="overflow-x: auto;">
                 <table class="data-table" id="items-table">
                     <thead>
                         <tr>
-                            <th>Produk</th>
-                            <th style="width: 150px;">Jumlah</th>
+                            <th>Produk (Stok Tersedia di Cabang Tujuan)</th>
+                            <th style="width: 150px;">Jumlah Diminta</th>
                             <th style="width: 80px; text-align: center;">Hapus</th>
                         </tr>
                     </thead>
@@ -61,13 +70,15 @@
                             <td>
                                 <select name="items[0][product_id]" class="form-control product-select searchable-select" required onchange="updateMaxStock(this)">
                                     <option value="">-- Pilih Produk --</option>
-                                    @foreach($products as $product)
-                                        <option value="{{ $product->id }}" data-stock="{{ $stocks[$product->id] ?? 0 }}">{{ $product->name }} (Sisa: {{ $stocks[$product->id] ?? 0 }})</option>
+                                    @foreach($allStocks as $stock)
+                                        <option value="{{ $stock->product_id }}" data-stock="{{ $stock->quantity }}">
+                                            {{ $stock->product->name }} (Tersedia: {{ $stock->quantity }})
+                                        </option>
                                     @endforeach
                                 </select>
                             </td>
                             <td>
-                                <input type="number" name="items[0][quantity]" class="form-control qty-input" required min="1" placeholder="Qty">
+                                <input type="number" name="items[0][quantity_requested]" class="form-control qty-input" required min="1" placeholder="Qty">
                             </td>
                             <td style="text-align: center;">
                                 <button type="button" class="btn btn-sm" style="color: var(--danger); background: transparent; border: none; font-size: 1.25rem;" onclick="removeRow(this)" disabled>&times;</button>
@@ -78,25 +89,29 @@
             </div>
 
             <div class="form-actions" style="margin-top: 2rem;">
-                <button type="submit" class="btn btn-primary" id="btn-submit">Kirim Permintaan Transfer</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit">Kirim Permintaan Stok</button>
                 <a href="{{ route('kepala-cabang.stock-transfers.index') }}" class="btn btn-secondary">Batal</a>
             </div>
         </form>
+        @endif
     </div>
 
+    @if($selectedBranch)
     <!-- Template for new rows -->
     <template id="row-template">
         <tr class="item-row">
             <td>
                 <select name="items[__INDEX__][product_id]" class="form-control product-select searchable-select" required onchange="updateMaxStock(this)">
                     <option value="">-- Pilih Produk --</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" data-stock="{{ $stocks[$product->id] ?? 0 }}">{{ $product->name }} (Sisa: {{ $stocks[$product->id] ?? 0 }})</option>
+                    @foreach($allStocks as $stock)
+                        <option value="{{ $stock->product_id }}" data-stock="{{ $stock->quantity }}">
+                            {{ $stock->product->name }} (Tersedia: {{ $stock->quantity }})
+                        </option>
                     @endforeach
                 </select>
             </td>
             <td>
-                <input type="number" name="items[__INDEX__][quantity]" class="form-control qty-input" required min="1" placeholder="Qty">
+                <input type="number" name="items[__INDEX__][quantity_requested]" class="form-control qty-input" required min="1" placeholder="Qty">
             </td>
             <td style="text-align: center;">
                 <button type="button" class="btn btn-sm btn-remove-row" style="color: var(--danger); background: transparent; border: none; font-size: 1.25rem; cursor: pointer;" onclick="removeRow(this)">&times;</button>
@@ -175,7 +190,7 @@
             }
         }
 
-        document.getElementById('batch-form').addEventListener('submit', function(e) {
+        document.getElementById('request-form').addEventListener('submit', function(e) {
             const products = document.querySelectorAll('select.product-select');
             let hasError = false;
             let selectedIds = new Set();
@@ -193,4 +208,5 @@
             }
         });
     </script>
+    @endif
 @endsection

@@ -33,7 +33,8 @@
                         <th>Produk</th>
                         <th>Cabang Asal</th>
                         <th>Cabang Tujuan</th>
-                        <th style="text-align: center;">Jumlah</th>
+                        <th style="text-align: center;">Jml Diminta</th>
+                        <th style="text-align: center;">Jml Dikirim</th>
                         <th>Status</th>
                         <th>User</th>
                     </tr>
@@ -45,12 +46,15 @@
                             <td>{{ $transfer->product->name ?? '-' }}</td>
                             <td>{{ $transfer->fromBranch->name ?? '-' }}</td>
                             <td>{{ $transfer->toBranch->name ?? '-' }}</td>
-                            <td style="text-align: center;">{{ $transfer->quantity }}</td>
+                            <td style="text-align: center;">{{ $transfer->quantity_requested }}</td>
+                            <td style="text-align: center;">{{ $transfer->quantity_sent ?? '-' }}</td>
                             <td>
                                 @if($transfer->status === 'pending')
                                     <span class="badge badge-warning">Menunggu</span>
                                 @elseif($transfer->status === 'approved')
-                                    <span class="badge badge-kasir">Disetujui</span>
+                                    <span class="badge badge-kasir">Dikirim</span>
+                                @elseif($transfer->status === 'received')
+                                    <span class="badge badge-owner">Diterima</span>
                                 @else
                                     <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">Ditolak</span>
                                 @endif

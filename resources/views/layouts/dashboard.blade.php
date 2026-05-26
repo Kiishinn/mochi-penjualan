@@ -60,6 +60,7 @@
             background: var(--bg-body);
             color: var(--text-primary);
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         /* ─── Sidebar ───────────────────────────────── */
@@ -203,6 +204,8 @@
         .main-content {
             margin-left: var(--sidebar-w);
             min-height: 100vh;
+            overflow-x: hidden;
+            max-width: 100vw;
         }
 
         .top-header {
@@ -362,6 +365,10 @@
             }
             .hamburger {
                 display: flex;
+            }
+            .main-content {
+                max-width: 100vw;
+                overflow-x: hidden;
             }
             
             /* Mobile Spacing Optimizations */
@@ -1089,7 +1096,9 @@
                             @php
                                 $lowStockCount = isset($lowStockNotifications) ? $lowStockNotifications->count() : 0;
                                 $pendingReturnCount = isset($pendingReturnNotifications) ? $pendingReturnNotifications->count() : 0;
-                                $totalNotifs = $lowStockCount + $pendingReturnCount;
+                                $pendingTransferInCount = isset($pendingTransferInNotifs) ? $pendingTransferInNotifs->count() : 0;
+                                $pendingTransferReceiveCount = isset($pendingTransferReceiveNotifs) ? $pendingTransferReceiveNotifs->count() : 0;
+                                $totalNotifs = $lowStockCount + $pendingReturnCount + $pendingTransferInCount + $pendingTransferReceiveCount;
                             @endphp
                             @if($totalNotifs > 0)
                                 <span style="position: absolute; top: -2px; right: -2px; background: var(--danger); width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bg-sidebar);"></span>
@@ -1118,6 +1127,62 @@
                                                     Jml Retur: {{ $notif->quantity }}
                                                 </span> 
                                                 <span style="color: var(--text-muted); font-size: 0.75rem;">(Alasan: {{ Str::limit($notif->reason, 20) }})</span>
+                                            </div>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <!-- Transfer Requests Section -->
+                            @if($pendingTransferInCount > 0)
+                                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-primary); background: rgba(245, 158, 11, 0.05);">
+                                    {{ Auth::user()->role === 'owner' ? 'Menunggu Persetujuan Cabang (' . $pendingTransferInCount . ')' : 'Permintaan Stok Masuk (' . $pendingTransferInCount . ')' }}
+                                </div>
+                                <div>
+                                    @foreach($pendingTransferInNotifs as $notif)
+                                        <a href="{{ Auth::user()->role === 'kepala_cabang' ? route('kepala-cabang.stock-transfers.index', ['tab' => 'incoming']) : route('stock-transfers.index') }}" 
+                                           class="notif-item warning"
+                                           style="text-decoration: none; transition: background 0.2s;"
+                                           onmouseover="this.style.backgroundColor='rgba(139, 92, 246, 0.05)'"
+                                           onmouseout="this.style.backgroundColor='transparent'">
+                                            <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary);">{{ $notif->product->name ?? '-' }}</div>
+                                            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                                @if(Auth::user()->role === 'owner')
+                                                    Dari: {{ $notif->toBranch->name ?? '-' }} <i class="fas fa-arrow-right" style="font-size: 0.7rem; margin: 0 0.25rem;"></i> Ke: {{ $notif->fromBranch->name ?? '-' }}
+                                                @else
+                                                    Peminta: {{ $notif->toBranch->name ?? '-' }}
+                                                @endif
+                                            </div>
+                                            <div style="font-size: 0.85rem; margin-top: 0.25rem;">
+                                                <span style="color: var(--warning); font-weight: 600;">Diminta: {{ $notif->quantity_requested }}</span>
+                                            </div>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <!-- Transfer Receiving Section -->
+                            @if($pendingTransferReceiveCount > 0)
+                                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-primary); background: rgba(34, 197, 94, 0.05);">
+                                    {{ Auth::user()->role === 'owner' ? 'Stok Dalam Pengiriman (' . $pendingTransferReceiveCount . ')' : 'Stok Sedang Dikirim ke Anda (' . $pendingTransferReceiveCount . ')' }}
+                                </div>
+                                <div>
+                                    @foreach($pendingTransferReceiveNotifs as $notif)
+                                        <a href="{{ Auth::user()->role === 'kepala_cabang' ? route('kepala-cabang.stock-transfers.index', ['tab' => 'outgoing']) : route('stock-transfers.index') }}" 
+                                           class="notif-item"
+                                           style="text-decoration: none; transition: background 0.2s; border-left: 4px solid var(--success);"
+                                           onmouseover="this.style.backgroundColor='rgba(139, 92, 246, 0.05)'"
+                                           onmouseout="this.style.backgroundColor='transparent'">
+                                            <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary);">{{ $notif->product->name ?? '-' }}</div>
+                                            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                                @if(Auth::user()->role === 'owner')
+                                                    Dari: {{ $notif->fromBranch->name ?? '-' }} <i class="fas fa-arrow-right" style="font-size: 0.7rem; margin: 0 0.25rem;"></i> Ke: {{ $notif->toBranch->name ?? '-' }}
+                                                @else
+                                                    Pengirim: {{ $notif->fromBranch->name ?? '-' }}
+                                                @endif
+                                            </div>
+                                            <div style="font-size: 0.85rem; margin-top: 0.25rem;">
+                                                <span style="color: var(--success); font-weight: 600;">Jumlah: {{ $notif->final_quantity }}</span>
                                             </div>
                                         </a>
                                     @endforeach

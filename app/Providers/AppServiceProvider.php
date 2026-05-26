@@ -43,9 +43,24 @@ class AppServiceProvider extends ServiceProvider
                 }
                 
                 $view->with('pendingReturnNotifications', $pendingReturns->get());
+
+                $pendingTransferIn = \App\Models\StockTransfer::with(['fromBranch', 'toBranch', 'product'])
+                    ->where('status', 'pending');
+                $pendingTransferReceive = \App\Models\StockTransfer::with(['fromBranch', 'toBranch', 'product'])
+                    ->where('status', 'approved');
+
+                if ($user->role === 'kepala_cabang') {
+                    $pendingTransferIn->where('from_branch_id', $user->branch_id);
+                    $pendingTransferReceive->where('to_branch_id', $user->branch_id);
+                }
+
+                $view->with('pendingTransferInNotifs', $pendingTransferIn->get());
+                $view->with('pendingTransferReceiveNotifs', $pendingTransferReceive->get());
             } else {
                 $view->with('lowStockNotifications', collect());
                 $view->with('pendingReturnNotifications', collect());
+                $view->with('pendingTransferInNotifs', collect());
+                $view->with('pendingTransferReceiveNotifs', collect());
             }
         });
     }

@@ -144,15 +144,15 @@ class ReportController extends Controller
             });
             
         // Transfers Out
-        \App\Models\StockTransfer::where('from_branch_id', $branchId)->where('product_id', $product_id)->where('status', 'approved')
+        \App\Models\StockTransfer::where('from_branch_id', $branchId)->where('product_id', $product_id)->whereIn('status', ['approved', 'received'])
             ->get()->each(function ($item) use (&$events) {
-                $events->push(['date' => $item->updated_at, 'type' => 'Transfer Keluar', 'qty' => -$item->quantity, 'ref' => 'Ke Cabang: ' . ($item->toBranch->name ?? '-')]);
+                $events->push(['date' => $item->updated_at, 'type' => 'Transfer Keluar', 'qty' => -$item->final_quantity, 'ref' => 'Ke Cabang: ' . ($item->toBranch->name ?? '-')]);
             });
             
         // Transfers In
-        \App\Models\StockTransfer::where('to_branch_id', $branchId)->where('product_id', $product_id)->where('status', 'approved')
+        \App\Models\StockTransfer::where('to_branch_id', $branchId)->where('product_id', $product_id)->where('status', 'received')
             ->get()->each(function ($item) use (&$events) {
-                $events->push(['date' => $item->updated_at, 'type' => 'Transfer Masuk', 'qty' => $item->quantity, 'ref' => 'Dari Cabang: ' . ($item->fromBranch->name ?? '-')]);
+                $events->push(['date' => $item->updated_at, 'type' => 'Transfer Masuk', 'qty' => $item->final_quantity, 'ref' => 'Dari Cabang: ' . ($item->fromBranch->name ?? '-')]);
             });
             
         // Sales
@@ -175,8 +175,12 @@ class ReportController extends Controller
         
         $sortedEvents = $events->sortBy('date')->values();
         
-        // Calculate running balance
-        $balance = 0;
+        $actualStock = \App\Models\Stock::where('branch_id', $branchId)->where('product_id', $product_id)->value('quantity') ?? 0;
+        $sumEvents = $sortedEvents->sum('qty');
+        $startingBalance = $actualStock - $sumEvents;
+        
+        // Calculate running balance starting from the true initial balance
+        $balance = $startingBalance;
         $sortedEvents = $sortedEvents->map(function($event) use (&$balance) {
             $balance += $event['qty'];
             $event['balance'] = $balance;

@@ -9,6 +9,8 @@
         <p class="welcome-sub">Berikut adalah ringkasan performa Mochi Petshop secara keseluruhan.</p>
     </div>
 
+
+
     <!-- Ringkasan Statistik -->
     <div class="stat-grid" style="margin-bottom: 2rem;">
         <div class="stat-card">
@@ -53,8 +55,21 @@
         
         <!-- Penjualan Per Cabang -->
         <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
                 <h3>Performa Cabang</h3>
+                <form method="GET" action="{{ route('owner.dashboard') }}" style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end;">
+                    <input type="hidden" name="kasir_branch_id" value="{{ request('kasir_branch_id') }}">
+                    <input type="hidden" name="kasir_start_date" value="{{ request('kasir_start_date') }}">
+                    <input type="hidden" name="kasir_end_date" value="{{ request('kasir_end_date') }}">
+                    
+                    <input type="date" name="pc_start_date" class="form-control" style="padding: 0.25rem 0.5rem; width: auto; display: inline-block;" value="{{ request('pc_start_date') }}" onchange="this.form.submit()" placeholder="Mulai" title="Mulai Tanggal">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">s/d</span>
+                    <input type="date" name="pc_end_date" class="form-control" style="padding: 0.25rem 0.5rem; width: auto; display: inline-block;" value="{{ request('pc_end_date') }}" onchange="this.form.submit()" title="Sampai Tanggal">
+                    
+                    @if(request('pc_start_date') != '' || request('pc_end_date') != '')
+                        <a href="{{ route('owner.dashboard', ['kasir_branch_id' => request('kasir_branch_id'), 'kasir_start_date' => request('kasir_start_date'), 'kasir_end_date' => request('kasir_end_date')]) }}" class="btn btn-secondary btn-sm" style="background: transparent; color: var(--danger); border-color: var(--danger); padding: 0.25rem 0.5rem;">Reset</a>
+                    @endif
+                </form>
             </div>
             <div style="overflow-x: auto;">
                 <table class="data-table">
@@ -122,11 +137,30 @@
 
     </div>
 
-    <!-- Performa Kasir (Top Sales Bulan Ini - Semua Cabang) -->
+    <!-- Performa Kasir (Top Sales) -->
     <div class="card" style="margin-top: 2rem;">
-        <div class="card-header">
-            <h3>Top Performa Kasir (Seluruh Cabang - Bulan Ini)</h3>
-            <a href="{{ route('shifts.index') }}" class="btn btn-secondary btn-sm">Lihat Shift Kasir</a>
+        <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
+            <h3>Top Performa Kasir</h3>
+            
+            <form method="GET" action="{{ route('owner.dashboard') }}" style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end;">
+                <input type="hidden" name="pc_start_date" value="{{ request('pc_start_date') }}">
+                <input type="hidden" name="pc_end_date" value="{{ request('pc_end_date') }}">
+                
+                <select name="kasir_branch_id" class="form-control" style="padding: 0.25rem 0.5rem; width: auto; display: inline-block;" onchange="this.form.submit()">
+                    <option value="">Semua Cabang</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ request('kasir_branch_id') == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+                <input type="date" name="kasir_start_date" class="form-control" style="padding: 0.25rem 0.5rem; width: auto; display: inline-block;" value="{{ request('kasir_start_date') }}" onchange="this.form.submit()" title="Mulai Tanggal">
+                <span style="font-size: 0.8rem; color: var(--text-muted);">s/d</span>
+                <input type="date" name="kasir_end_date" class="form-control" style="padding: 0.25rem 0.5rem; width: auto; display: inline-block;" value="{{ request('kasir_end_date') }}" onchange="this.form.submit()" title="Sampai Tanggal">
+                
+                @if(request('kasir_branch_id') != '' || request('kasir_start_date') != '' || request('kasir_end_date') != '')
+                    <a href="{{ route('owner.dashboard', ['pc_start_date' => request('pc_start_date'), 'pc_end_date' => request('pc_end_date')]) }}" class="btn btn-secondary btn-sm" style="background: transparent; color: var(--danger); border-color: var(--danger); padding: 0.25rem 0.5rem;">Reset</a>
+                @endif
+                <a href="{{ route('shifts.index') }}" class="btn btn-primary btn-sm">Lihat Shift Kasir</a>
+            </form>
         </div>
         <div style="overflow-x: auto;">
             <table class="data-table">

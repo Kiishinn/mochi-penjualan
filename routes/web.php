@@ -51,6 +51,9 @@ Route::middleware(['auth', 'role:kepala_cabang'])->prefix('kepala-cabang')->name
     Route::resource('stock-ins', \App\Http\Controllers\KepalaCabang\StockInController::class)->except(['show', 'destroy']);
     Route::resource('stock-outs', \App\Http\Controllers\KepalaCabang\StockOutController::class)->except(['show', 'destroy']);
     Route::resource('stock-transfers', \App\Http\Controllers\KepalaCabang\StockTransferController::class)->except(['show', 'destroy']);
+    Route::post('/stock-transfers/{stock_transfer}/approve', [\App\Http\Controllers\KepalaCabang\StockTransferController::class, 'approve'])->name('stock-transfers.approve');
+    Route::post('/stock-transfers/{stock_transfer}/reject', [\App\Http\Controllers\KepalaCabang\StockTransferController::class, 'reject'])->name('stock-transfers.reject');
+    Route::post('/stock-transfers/{stock_transfer}/receive', [\App\Http\Controllers\KepalaCabang\StockTransferController::class, 'receive'])->name('stock-transfers.receive');
     Route::resource('returns', \App\Http\Controllers\KepalaCabang\ReturnController::class)->except(['edit', 'destroy']);
     Route::post('/returns/{returnItem}/approve', [\App\Http\Controllers\KepalaCabang\ReturnController::class, 'approve'])->name('returns.approve');
     Route::post('/returns/{returnItem}/reject', [\App\Http\Controllers\KepalaCabang\ReturnController::class, 'reject'])->name('returns.reject');

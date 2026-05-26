@@ -10,8 +10,16 @@ use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    public function owner()
+    public function owner(\Illuminate\Http\Request $request)
     {
+        // Filters for Performa Cabang
+        $pcStartDate = $request->get('pc_start_date');
+        $pcEndDate = $request->get('pc_end_date');
+        
+        // Filters for Top Kasir
+        $kasirBranchId = $request->get('kasir_branch_id');
+        $kasirStartDate = $request->get('kasir_start_date');
+        $kasirEndDate = $request->get('kasir_end_date');
         $totalBranches = Branch::count();
         $totalProducts = Product::count();
         $totalSales = Sale::count();
@@ -25,28 +33,46 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // Penjualan per cabang
-        $salesPerBranch = Branch::withCount('sales')
-            ->withSum('sales', 'total_price')
-            ->get();
+        // Penjualan per cabang (dengan filter)
+        $salesQuery = function ($query) use ($pcStartDate, $pcEndDate) {
+            if ($pcStartDate && $pcEndDate) {
+                $query->whereBetween('transaction_date', [$pcStartDate . ' 00:00:00', $pcEndDate . ' 23:59:59']);
+            }
+        };
 
-        // Cashier Performance (This Month, All Branches)
-        $cashierPerformances = \App\Models\User::where('role', 'kasir')
-            ->with('branch')
-            ->withCount(['sales as transactions_count' => function ($query) {
+        $branchQuery = Branch::withCount(['sales' => $salesQuery])
+            ->withSum(['sales' => $salesQuery], 'total_price');
+            
+        $salesPerBranch = $branchQuery->get();
+
+        // Cashier Performance (dengan filter)
+        $cashierQuery = \App\Models\User::where('role', 'kasir')->with('branch');
+        
+        if ($kasirBranchId) {
+            $cashierQuery->where('branch_id', $kasirBranchId);
+        }
+
+        $cashierSalesQuery = function ($query) use ($kasirStartDate, $kasirEndDate) {
+            if ($kasirStartDate && $kasirEndDate) {
+                $query->whereBetween('transaction_date', [$kasirStartDate . ' 00:00:00', $kasirEndDate . ' 23:59:59']);
+            } else {
+                // Default to this month if no date filter is applied
                 $query->whereMonth('transaction_date', now()->month)
                       ->whereYear('transaction_date', now()->year);
-            }])
-            ->withSum(['sales as total_revenue' => function ($query) {
-                $query->whereMonth('transaction_date', now()->month)
-                      ->whereYear('transaction_date', now()->year);
-            }], 'total_price')
+            }
+        };
+
+        $cashierPerformances = $cashierQuery
+            ->withCount(['sales as transactions_count' => $cashierSalesQuery])
+            ->withSum(['sales as total_revenue' => $cashierSalesQuery], 'total_price')
             ->orderByDesc('total_revenue')
             ->take(10) // Top 10
             ->get();
 
+        $branches = Branch::all();
+
         return view('owner.dashboard', compact(
-            'totalBranches', 'totalProducts', 'totalSales', 'totalRevenue', 'lowStocks', 'salesPerBranch', 'cashierPerformances'
+            'totalBranches', 'totalProducts', 'totalSales', 'totalRevenue', 'lowStocks', 'salesPerBranch', 'cashierPerformances', 'branches'
         ));
     }
 

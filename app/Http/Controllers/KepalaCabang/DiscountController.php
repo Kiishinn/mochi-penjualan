@@ -29,13 +29,28 @@ class DiscountController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'product_id' => 'required|exists:products,id',
             'discount_type' => 'required|in:percentage,nominal',
             'discount_value' => 'required|numeric|min:1',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-        ]);
+        ];
+
+        // Validasi tambahan: persentase tidak boleh > 100
+        if ($request->discount_type === 'percentage') {
+            $rules['discount_value'] .= '|max:100';
+        }
+
+        // Validasi tambahan: nominal tidak boleh > harga jual produk
+        if ($request->discount_type === 'nominal' && $request->product_id) {
+            $product = Product::find($request->product_id);
+            if ($product && $request->discount_value > $product->selling_price) {
+                return back()->with('error', 'Nilai potongan tidak boleh melebihi harga jual produk (Rp ' . number_format($product->selling_price, 0, ',', '.') . ').')->withInput();
+            }
+        }
+
+        $request->validate($rules);
 
         $branchId = Auth::user()->branch_id;
 
