@@ -10,9 +10,19 @@ class BranchController extends Controller
     /**
      * Display a listing of the branches.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $branches = Branch::withCount('users')->orderBy('name')->paginate(10);
+        $query = Branch::withCount('users');
+        
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+        
+        $branches = $query->orderBy('name')->paginate(10);
         return view('owner.branches.index', compact('branches'));
     }
 
@@ -32,12 +42,10 @@ class BranchController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string'],
-            'phone' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
         ], [
             'name.required' => 'Nama cabang wajib diisi.',
             'name.max' => 'Nama cabang maksimal 255 karakter.',
-            'phone.max' => 'Nomor telepon maksimal 50 karakter.',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
@@ -63,12 +71,10 @@ class BranchController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string'],
-            'phone' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
         ], [
             'name.required' => 'Nama cabang wajib diisi.',
             'name.max' => 'Nama cabang maksimal 255 karakter.',
-            'phone.max' => 'Nomor telepon maksimal 50 karakter.',
         ]);
 
         $validated['is_active'] = $request->has('is_active');

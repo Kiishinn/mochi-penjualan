@@ -8,8 +8,13 @@ use Illuminate\Http\Request;
 
 class UnitController extends Controller
 {
-    public function index() {
-        return view('kepala-cabang.units.index', ['units' => Unit::orderBy('name')->paginate(10)]);
+    public function index(Request $request) {
+        $query = Unit::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('symbol', 'like', '%' . $request->search . '%');
+        }
+        return view('kepala-cabang.units.index', ['units' => $query->orderBy('name')->paginate(10)]);
     }
     public function create() { return view('kepala-cabang.units.create'); }
     public function store(Request $request) {

@@ -14,12 +14,28 @@
             
             <div class="form-group">
                 <label for="sale_id">Pilih Transaksi (No Invoice) <span style="color: #ef4444;">*</span></label>
-                <select id="sale_id" name="sale_id" class="form-control" required onchange="loadProducts(this)">
+                <select id="sale_id" name="sale_id" class="form-control searchable-select" required onchange="loadProducts(this)">
                     <option value="">Pilih Transaksi</option>
                     @foreach($sales as $sale)
-                        <option value="{{ $sale->id }}" data-details="{{ json_encode($sale->details->map(function($d) { return ['id' => $d->product_id, 'name' => $d->product->name, 'qty' => $d->quantity]; })) }}">
-                            {{ $sale->invoice_number }} - {{ date('d/m/Y', strtotime($sale->transaction_date)) }}
-                        </option>
+                        @php
+                            $returnableDetails = $sale->details->map(function($d) use ($sale) {
+                                $alreadyReturned = $sale->returnItems->where('product_id', $d->product_id)
+                                    ->filter(function($r) {
+                                        return $r->status !== 'rejected';
+                                    })->sum('quantity');
+                                $remaining = $d->quantity - $alreadyReturned;
+                                
+                                if ($remaining > 0) {
+                                    return ['id' => $d->product_id, 'name' => $d->product->name, 'qty' => $remaining];
+                                }
+                                return null;
+                            })->filter()->values();
+                        @endphp
+                        @if($returnableDetails->count() > 0)
+                            <option value="{{ $sale->id }}" data-details="{{ json_encode($returnableDetails) }}" @if(old('sale_id') == $sale->id) selected @endif>
+                                {{ $sale->invoice_number }} - {{ date('d/m/Y', strtotime($sale->transaction_date)) }}
+                            </option>
+                        @endif
                     @endforeach
                 </select>
                 @error('sale_id') <div class="form-error">{{ $message }}</div> @enderror
@@ -57,16 +73,22 @@
             const productSelect = document.getElementById('product_id');
             productSelect.innerHTML = '<option value="">Pilih Produk</option>';
             
-            if (select.selectedIndex > 0) {
-                const option = select.options[select.selectedIndex];
-                const details = JSON.parse(option.getAttribute('data-details'));
-                
-                details.forEach(detail => {
-                    const opt = document.createElement('option');
-                    opt.value = detail.id;
-                    opt.textContent = `${detail.name} (Beli: ${detail.qty})`;
-                    productSelect.appendChild(opt);
-                });
+            if (select.value) {
+                const option = Array.from(select.options).find(opt => opt.value === select.value);
+                if (option) {
+                    const details = JSON.parse(option.getAttribute('data-details'));
+                    
+                    details.forEach(detail => {
+                        const opt = document.createElement('option');
+                        opt.value = detail.id;
+                        opt.textContent = `${detail.name} (Beli: ${detail.qty})`;
+                        productSelect.appendChild(opt);
+                    });
+                    
+                    if (details.length === 1) {
+                        productSelect.value = details[0].id;
+                    }
+                }
             }
         }
     </script>

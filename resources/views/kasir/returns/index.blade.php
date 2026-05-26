@@ -21,6 +21,7 @@
                         <th>No Invoice</th>
                         <th>Produk</th>
                         <th style="text-align: center;">Jumlah</th>
+                        <th>Tipe & Kondisi</th>
                         <th>Alasan</th>
                         <th>Status</th>
                     </tr>
@@ -28,18 +29,26 @@
                 <tbody>
                     @forelse($returnItems as $return)
                         <tr>
-                            <td>{{ date('d/m/Y', strtotime($return->return_date)) }}</td>
+                            <td>{{ $return->created_at->format('d/m/Y H:i') }} WIB</td>
                             <td>
                                 <div style="font-weight: 500; color: var(--text-primary);">{{ $return->sale->invoice_number ?? '-' }}</div>
                             </td>
                             <td>{{ $return->product->name ?? '-' }}</td>
                             <td style="text-align: center;">{{ $return->quantity }}</td>
-                            <td>{{ $return->reason ?? '-' }}</td>
+                            <td>
+                                <div style="font-size: 0.85rem;">
+                                    <span style="color: var(--accent);">{{ $return->return_type === 'refund' ? 'Kembali Uang' : 'Tukar Barang' }}</span><br>
+                                    <span style="color: var(--text-muted);">{{ $return->item_condition === 'good' ? 'Kondisi Bagus' : 'Barang Rusak' }}</span>
+                                </div>
+                            </td>
+                            <td>{{ $return->reason ?: '-' }}</td>
                             <td>
                                 @if($return->status === 'pending')
                                     <span class="badge badge-warning">Menunggu Diproses KC</span>
                                 @elseif($return->status === 'approved')
                                     <span class="badge badge-kasir">Disetujui</span>
+                                @elseif($return->status === 'rejected')
+                                    <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">Ditolak</span>
                                 @endif
                             </td>
                         </tr>

@@ -7,7 +7,7 @@
     <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
-    <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card no-print" style="margin-bottom: 1.5rem;">
         <div class="card-header">
             <h3>Filter Laporan</h3>
         </div>
@@ -37,22 +37,17 @@
                 <button type="button" class="btn btn-sm btn-secondary" onclick="setQuickDate('this_month')">Bulan Ini</button>
                 <button type="button" class="btn btn-sm btn-secondary" onclick="setQuickDate('this_year')">Tahun Ini</button>
             </div>
-            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
                 <a href="{{ route('reports.sales') }}" class="btn btn-secondary">Reset</a>
                 
                 <!-- Print/PDF Button (Native) -->
-                <button type="button" class="btn btn-secondary" onclick="window.print()">Cetak / PDF</button>
-                
-                <!-- Export CSV Button -->
-                <a href="{{ route('reports.sales.export', request()->all()) }}" class="btn btn-secondary" style="background-color: #10b981; color: white; border-color: #10b981;">
-                    Export Excel (CSV)
-                </a>
+                <button type="button" class="btn btn-secondary no-print" onclick="window.print()">Cetak / PDF</button>
             </div>
         </form>
     </div>
 
     <!-- Charts Section -->
-    <div class="chart-grid" style="gap: 1.5rem; margin-bottom: 1.5rem;">
+    <div class="chart-grid no-print" style="gap: 1.5rem; margin-bottom: 1.5rem;">
         <div class="card" style="margin-bottom: 0;">
             <div class="card-header">
                 <h3>Tren Penjualan</h3>
@@ -71,7 +66,7 @@
         </div>
     </div>
 
-    <div class="stat-grid" style="margin-bottom: 1.5rem; margin-top: 0;">
+    <div class="stat-grid no-print" style="margin-bottom: 1.5rem; margin-top: 0;">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1);">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#22c55e"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
@@ -91,36 +86,6 @@
             </div>
         </div>
     </div>
-
-    @if(count($topProducts) > 0)
-    <div class="card" style="margin-bottom: 1.5rem;">
-        <div class="card-header">
-            <h3>Produk Terlaris (Top 5)</h3>
-        </div>
-        <div style="overflow-x: auto;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Nama Produk</th>
-                        <th>Kategori</th>
-                        <th style="text-align: center;">Total Terjual</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($topProducts as $top)
-                        <tr>
-                            <td><div style="font-weight: 500; color: var(--text-primary);">{{ $top->product->name ?? '-' }}</div></td>
-                            <td>{{ $top->product->category->name ?? '-' }}</td>
-                            <td style="text-align: center;">
-                                <span class="badge badge-kasir">{{ $top->total_qty }}</span>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-    @endif
 
     <div class="card">
         <div class="card-header">
@@ -149,7 +114,7 @@
                                 @foreach($sale->details as $detail)
                                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
                                         <span style="font-weight: 600; color: var(--text-primary);">{{ $detail->quantity }}x</span> {{ $detail->product->name ?? 'Produk Dihapus' }} 
-                                        (Rp {{ number_format($detail->subtotal, 0, ',', '.') }})
+                                        <span style="font-size: 0.75rem;">(Rp {{ number_format($detail->price, 0, ',', '.') }} / item)</span>
                                     </div>
                                 @endforeach
                             </td>

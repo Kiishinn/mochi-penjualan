@@ -21,7 +21,7 @@ class TransactionController extends Controller
             return redirect()->route('kasir.shifts.create')->with('error', 'Anda harus membuka shift terlebih dahulu sebelum mengakses menu transaksi.');
         }
 
-        $sales = Sale::with(['user', 'details.product'])
+        $sales = Sale::with(['user', 'details.product', 'returnItems'])
             ->where('branch_id', $branchId)->latest()->paginate(10);
         return view('kasir.transactions.index', compact('sales'));
     }
@@ -33,7 +33,12 @@ class TransactionController extends Controller
         }
 
         $branchId = Auth::user()->branch_id;
-        $stocks = Stock::with(['product.category', 'product.unit'])
+        $stocks = Stock::with(['product.category', 'product.unit', 'product.discounts' => function($q) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->where('status', 'approved')
+                  ->where('start_date', '<=', now())
+                  ->where('end_date', '>=', now());
+            }])
             ->where('branch_id', $branchId)->where('quantity', '>', 0)->get();
         return view('kasir.transactions.create', compact('stocks'));
     }
@@ -95,6 +100,7 @@ class TransactionController extends Controller
                     'product_id' => $item['product_id'],
                     'quantity' => $item['qty'],
                     'price' => $item['price'],
+                    'discount_amount' => $item['discount_amount'] ?? 0,
                     'subtotal' => $item['price'] * $item['qty'],
                 ]);
                 // Kurangi stok
@@ -111,7 +117,45 @@ class TransactionController extends Controller
 
     public function show(Sale $transaction) {
         if ($transaction->branch_id !== Auth::user()->branch_id) abort(403);
-        $transaction->load('details.product', 'user', 'branch');
+        $transaction->load('details.product', 'user', 'branch', 'returnItems');
         return view('kasir.transactions.show', compact('transaction'));
+    }
+
+    public function voidTransaction(Sale $transaction) {
+        if ($transaction->branch_id !== Auth::user()->branch_id) {
+            abort(403);
+        }
+
+        // Limit to 15 minutes
+        if ($transaction->created_at->diffInMinutes(now()) > 15) {
+            return back()->with('error', 'Transaksi sudah melewati batas waktu 15 menit dan tidak dapat dibatalkan.');
+        }
+
+        // Check if there are any returns related to this transaction
+        if ($transaction->returnItems()->count() > 0) {
+            return back()->with('error', 'Transaksi tidak dapat dibatalkan karena sudah memiliki riwayat retur.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Restore stock
+            foreach ($transaction->details as $detail) {
+                Stock::where('branch_id', $transaction->branch_id)
+                     ->where('product_id', $detail->product_id)
+                     ->increment('quantity', $detail->quantity);
+            }
+
+            // Delete transaction details (cascading normally, but we explicitly delete here)
+            $transaction->details()->delete();
+
+            // Delete the transaction itself
+            $transaction->delete();
+
+            DB::commit();
+            return redirect()->route('kasir.transactions.index')->with('success', 'Transaksi berhasil dibatalkan dan dihapus, stok telah dikembalikan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Terjadi kesalahan saat membatalkan transaksi: ' . $e->getMessage());
+        }
     }
 }

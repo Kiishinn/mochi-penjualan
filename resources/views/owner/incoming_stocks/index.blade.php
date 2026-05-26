@@ -23,7 +23,7 @@
                 <tbody>
                     @forelse($incomingStocks as $stock)
                         <tr>
-                            <td>{{ \Carbon\Carbon::parse($stock->date)->format('d M Y') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($stock->date)->format('d M Y H:i') }} WIB</td>
                             <td><div style="font-weight: 500; color: var(--text-primary);">{{ $stock->reference_number }}</div></td>
                             <td>{{ $stock->branch->name ?? '-' }}</td>
                             <td>{{ $stock->supplier->name ?? '-' }}</td>

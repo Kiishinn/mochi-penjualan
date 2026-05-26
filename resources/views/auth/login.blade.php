@@ -15,15 +15,40 @@
 
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --bg-input: rgba(15, 23, 42, 0.6);
+            --border-color: rgba(148, 163, 184, 0.1);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #06b6d4;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+
+        :root[data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-input: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            background: var(--bg-body);
             position: relative;
             overflow: hidden;
+            color: var(--text-primary);
         }
 
         /* Animated background orbs */
@@ -70,42 +95,34 @@
             margin-bottom: 2rem;
         }
         .brand-icon {
-            width: 72px; height: 72px;
-            margin: 0 auto 1rem;
-            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
-            animation: pulse-glow 3s ease-in-out infinite;
-        }
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3); }
-            50% { box-shadow: 0 8px 48px rgba(6, 182, 212, 0.5); }
-        }
-        .brand-icon svg {
-            width: 40px; height: 40px;
-            color: #fff;
+            padding: 8px;
+            margin: 0 auto 1rem;
         }
         .brand h1 {
             font-size: 1.75rem;
             font-weight: 700;
-            color: #f1f5f9;
+            color: var(--text-primary);
             letter-spacing: -0.02em;
         }
         .brand p {
             font-size: 0.875rem;
-            color: #94a3b8;
+            color: var(--text-secondary);
             margin-top: 0.25rem;
         }
 
         /* Card */
         .login-card {
-            background: rgba(30, 41, 59, 0.7);
+            background: var(--bg-card);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(148, 163, 184, 0.1);
+            border: 1px solid var(--border-color);
             border-radius: 24px;
             padding: 2.5rem 2rem;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
@@ -113,7 +130,7 @@
         .login-card h2 {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #e2e8f0;
+            color: var(--text-primary);
             text-align: center;
             margin-bottom: 2rem;
         }
@@ -126,7 +143,7 @@
             display: block;
             font-size: 0.8125rem;
             font-weight: 500;
-            color: #cbd5e1;
+            color: var(--text-secondary);
             margin-bottom: 0.5rem;
         }
         .input-wrapper {
@@ -138,32 +155,32 @@
             top: 50%;
             transform: translateY(-50%);
             width: 18px; height: 18px;
-            color: #64748b;
+            color: var(--text-muted);
             transition: color 0.2s;
             pointer-events: none;
         }
         .input-wrapper input {
             width: 100%;
             padding: 0.75rem 2.5rem 0.75rem 2.75rem;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(148, 163, 184, 0.15);
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             font-family: 'Inter', sans-serif;
             font-size: 0.9375rem;
-            color: #f1f5f9;
+            color: var(--text-primary);
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .input-wrapper input::placeholder {
-            color: #475569;
+            color: var(--text-muted);
         }
         .input-wrapper input:focus {
-            border-color: #06b6d4;
+            border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
         }
         .input-wrapper input:focus ~ svg,
         .input-wrapper input:focus + svg {
-            color: #06b6d4;
+            color: var(--accent);
         }
 
         /* Toggle password */
@@ -287,15 +304,33 @@
             .brand-icon svg { width: 32px; height: 32px; }
         }
     </style>
+
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        if (savedTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
 </head>
 <body>
+    <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 20;">
+        <button onclick="toggleTheme()" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
+            <!-- Sun Icon -->
+            <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; display: none;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+            </svg>
+            <!-- Moon Icon -->
+            <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; display: none;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+            </svg>
+        </button>
+    </div>
+
     <div class="login-container">
         <!-- Brand -->
         <div class="brand">
             <div class="brand-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V3a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m7.594-4.5v-4.5m0 4.5H5.904a1.5 1.5 0 0 1-1.5-1.5v-3a1.5 1.5 0 0 1 1.5-1.5h1.73" />
-                </svg>
+                <img src="{{ asset('images/logo.png') }}" alt="Mochi Petshop Logo" style="width: 100%; height: 100%; object-fit: contain;">
             </div>
             <h1>Mochi Petshop</h1>
             <p>Sistem Informasi Penjualan & Stok Multi Cabang</p>
@@ -415,6 +450,27 @@
                 eyeOffIcon.style.display = 'none';
             }
         }
+        function toggleTheme() {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            if (isLight) {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            }
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            document.getElementById('icon-sun').style.display = isLight ? 'none' : 'block';
+            document.getElementById('icon-moon').style.display = isLight ? 'block' : 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+        });
     </script>
 </body>
 </html>

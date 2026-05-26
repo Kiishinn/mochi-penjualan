@@ -12,9 +12,19 @@ use Illuminate\Support\Facades\DB;
 
 class StockOutController extends Controller
 {
-    public function index() {
-        $stockOuts = StockOut::with(['product', 'creator'])
-            ->where('branch_id', Auth::user()->branch_id)->latest()->paginate(10);
+    public function index(Request $request) {
+        $query = StockOut::with(['product', 'creator'])
+            ->where('branch_id', Auth::user()->branch_id);
+            
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->whereHas('product', function($q2) use ($request) {
+                    $q2->where('name', 'like', '%' . $request->search . '%');
+                })->orWhere('notes', 'like', '%' . $request->search . '%');
+            });
+        }
+        
+        $stockOuts = $query->latest()->paginate(10);
         return view('kepala-cabang.stock-outs.index', compact('stockOuts'));
     }
 
@@ -27,32 +37,39 @@ class StockOutController extends Controller
 
     public function store(Request $request) {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
             'date' => 'required|date',
             'reason' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
         ]);
 
         $branchId = Auth::user()->branch_id;
-        $stock = Stock::where('branch_id', $branchId)->where('product_id', $request->product_id)->first();
 
-        if (!$stock || $stock->quantity < $request->quantity) {
-            return back()->withInput()->withErrors(['quantity' => 'Stok tidak mencukupi.']);
+        // Validasi stok dulu
+        foreach ($request->items as $item) {
+            $stock = Stock::where('branch_id', $branchId)->where('product_id', $item['product_id'])->first();
+            if (!$stock || $stock->quantity < $item['quantity']) {
+                return back()->withInput()->withErrors(['items' => 'Stok tidak mencukupi untuk salah satu produk yang dipilih.']);
+            }
         }
 
-        DB::transaction(function () use ($request, $branchId, $stock) {
-            StockOut::create([
-                'branch_id' => $branchId,
-                'product_id' => $request->product_id,
-                'quantity' => $request->quantity,
-                'date' => $request->date,
-                'reason' => $request->reason,
-                'created_by' => Auth::id(),
-            ]);
-            $stock->decrement('quantity', $request->quantity);
+        DB::transaction(function () use ($request, $branchId) {
+            foreach ($request->items as $item) {
+                StockOut::create([
+                    'branch_id' => $branchId,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'date' => $request->date,
+                    'reason' => $request->reason,
+                    'created_by' => Auth::id(),
+                ]);
+                $stock = Stock::where('branch_id', $branchId)->where('product_id', $item['product_id'])->first();
+                $stock->decrement('quantity', $item['quantity']);
+            }
         });
 
-        return redirect()->route('kepala-cabang.stock-outs.index')->with('success', 'Stok keluar berhasil dicatat.');
+        return redirect()->route('kepala-cabang.stock-outs.index')->with('success', 'Batch Stok keluar berhasil dicatat.');
     }
 
     public function edit(StockOut $stock_out) {

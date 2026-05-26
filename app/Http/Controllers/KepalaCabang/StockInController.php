@@ -13,50 +13,65 @@ use Illuminate\Support\Facades\DB;
 
 class StockInController extends Controller
 {
-    public function index() {
-        $stockIns = StockIn::with(['product', 'supplier', 'creator'])
-            ->where('branch_id', Auth::user()->branch_id)->latest()->paginate(10);
+    public function index(Request $request) {
+        $query = StockIn::with(['product', 'supplier', 'creator'])
+            ->where('branch_id', Auth::user()->branch_id);
+            
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->whereHas('product', function($q2) use ($request) {
+                    $q2->where('name', 'like', '%' . $request->search . '%');
+                })->orWhere('notes', 'like', '%' . $request->search . '%');
+            });
+        }
+            
+        $stockIns = $query->latest()->paginate(10);
         return view('kepala-cabang.stock-ins.index', compact('stockIns'));
     }
 
     public function create() {
         $products = Product::orderBy('name')->get();
-        $suppliers = Supplier::orderBy('name')->get();
+        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
         return view('kepala-cabang.stock-ins.create', compact('products', 'suppliers'));
     }
 
     public function store(Request $request) {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'quantity' => 'required|integer|min:1',
             'date' => 'required|date',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'note' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
         ]);
 
         DB::transaction(function () use ($request) {
             $branchId = Auth::user()->branch_id;
-            StockIn::create([
-                'branch_id' => $branchId,
-                'product_id' => $request->product_id,
-                'supplier_id' => $request->supplier_id,
-                'quantity' => $request->quantity,
-                'date' => $request->date,
-                'note' => $request->note,
-                'created_by' => Auth::id(),
-            ]);
-            // Update stock
-            $stock = Stock::firstOrCreate(['branch_id' => $branchId, 'product_id' => $request->product_id], ['quantity' => 0]);
-            $stock->increment('quantity', $request->quantity);
+            
+            foreach ($request->items as $item) {
+                StockIn::create([
+                    'branch_id' => $branchId,
+                    'product_id' => $item['product_id'],
+                    'supplier_id' => $request->supplier_id,
+                    'quantity' => $item['quantity'],
+                    'date' => $request->date,
+                    'note' => $request->note,
+                    'created_by' => Auth::id(),
+                ]);
+                
+                // Update stock
+                $stock = Stock::firstOrCreate(['branch_id' => $branchId, 'product_id' => $item['product_id']], ['quantity' => 0]);
+                $stock->increment('quantity', $item['quantity']);
+            }
         });
 
-        return redirect()->route('kepala-cabang.stock-ins.index')->with('success', 'Stok masuk berhasil dicatat.');
+        return redirect()->route('kepala-cabang.stock-ins.index')->with('success', 'Batch Stok masuk berhasil dicatat.');
     }
 
     public function edit(StockIn $stock_in) {
         if ($stock_in->branch_id !== Auth::user()->branch_id) abort(403);
         $products = Product::orderBy('name')->get();
-        $suppliers = Supplier::orderBy('name')->get();
+        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
         return view('kepala-cabang.stock-ins.edit', compact('stock_in', 'products', 'suppliers'));
     }
 

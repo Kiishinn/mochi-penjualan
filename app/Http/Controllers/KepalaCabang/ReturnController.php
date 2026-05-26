@@ -13,15 +13,26 @@ use Illuminate\Support\Facades\DB;
 
 class ReturnController extends Controller
 {
-    public function index() {
-        $returnItems = ReturnItem::with(['sale', 'product', 'user'])
-            ->where('branch_id', Auth::user()->branch_id)->latest()->paginate(10);
+    public function index(Request $request) {
+        $query = ReturnItem::with(['sale', 'product', 'user'])
+            ->where('branch_id', Auth::user()->branch_id);
+            
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('reason', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('sale', function($q2) use ($request) {
+                      $q2->where('receipt_number', 'like', '%' . $request->search . '%');
+                  });
+            });
+        }
+            
+        $returnItems = $query->latest()->paginate(10);
         return view('kepala-cabang.returns.index', compact('returnItems'));
     }
 
     public function create() {
         $branchId = Auth::user()->branch_id;
-        $sales = Sale::with('details.product')->where('branch_id', $branchId)->latest()->get();
+        $sales = Sale::with(['details.product', 'returnItems'])->where('branch_id', $branchId)->latest()->get();
         return view('kepala-cabang.returns.create', compact('sales'));
     }
 
@@ -41,9 +52,14 @@ class ReturnController extends Controller
         if (!$saleDetail) {
             return back()->withInput()->withErrors(['product_id' => 'Produk tidak ditemukan dalam transaksi ini.']);
         }
-        $alreadyReturned = ReturnItem::where('sale_id', $sale->id)->where('product_id', $request->product_id)->sum('quantity');
+        
+        $alreadyReturned = ReturnItem::where('sale_id', $sale->id)
+            ->where('product_id', $request->product_id)
+            ->where('status', '!=', 'rejected')
+            ->sum('quantity');
+            
         if ($request->quantity > ($saleDetail->quantity - $alreadyReturned)) {
-            return back()->withInput()->withErrors(['quantity' => 'Jumlah retur melebihi jumlah pembelian.']);
+            return back()->withInput()->withErrors(['quantity' => 'Jumlah retur melebihi sisa pembelian yang bisa diretur.']);
         }
 
         ReturnItem::create([
@@ -72,32 +88,34 @@ class ReturnController extends Controller
             return back()->withErrors(['error' => 'Retur sudah diproses.']);
         }
 
-        $request->validate(['status' => 'required|in:approved']);
+        $request->validate(['status' => 'required|in:approved,rejected']);
+
+        if ($request->status === 'rejected') {
+            $return->update(['status' => 'rejected']);
+            return redirect()->route('kepala-cabang.returns.index')->with('success', 'Pengajuan retur telah ditolak.');
+        }
 
         DB::transaction(function () use ($return) {
             $return->update(['status' => 'approved']);
-            // Kembalikan stok
+            
             $stock = Stock::firstOrCreate(['branch_id' => $return->branch_id, 'product_id' => $return->product_id], ['quantity' => 0]);
-            $stock->increment('quantity', $return->quantity);
 
-            // Kurangi dari penjualan agar laporan akurat
-            $saleDetail = SaleDetail::where('sale_id', $return->sale_id)->where('product_id', $return->product_id)->first();
-            if ($saleDetail) {
-                $deductQty = $return->quantity;
-                $deductPrice = $deductQty * $saleDetail->price;
+            // Jika pelanggan minta tukar barang, kita berikan barang baru, jadi stok fisik di toko BERKURANG
+            if ($return->return_type === 'exchange') {
+                $stock->decrement('quantity', $return->quantity);
+            }
+            // Jika pelanggan minta refund, kita kembalikan uangnya
+            else if ($return->return_type === 'refund') {
+                // Tidak perlu mengubah Sale/SaleDetail agar riwayat transaksi tetap utuh
+                // Refund akan mengurangi kas/pendapatan di laporan secara terpisah
+            }
 
-                $saleDetail->quantity -= $deductQty;
-                $saleDetail->subtotal -= $deductPrice;
-                $saleDetail->save();
-
-                $sale = Sale::find($return->sale_id);
-                if ($sale) {
-                    $sale->total_price -= $deductPrice;
-                    $sale->save();
-                }
+            // Jika barang yang diretur masih bagus, kita masukkan kembali ke stok gudang
+            if ($return->item_condition === 'good') {
+                $stock->increment('quantity', $return->quantity);
             }
         });
 
-        return redirect()->route('kepala-cabang.returns.index')->with('success', 'Retur berhasil disetujui dan stok dikembalikan.');
+        return redirect()->route('kepala-cabang.returns.index')->with('success', 'Retur berhasil disetujui dan stok telah disesuaikan.');
     }
 }

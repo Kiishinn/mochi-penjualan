@@ -21,7 +21,7 @@ class ReturnController extends Controller
 
     public function create() {
         $branchId = Auth::user()->branch_id;
-        $sales = Sale::with('details.product')->where('branch_id', $branchId)->latest()->get();
+        $sales = Sale::with(['details.product', 'returnItems'])->where('branch_id', $branchId)->latest()->get();
         return view('kasir.returns.create', compact('sales'));
     }
 
@@ -30,6 +30,8 @@ class ReturnController extends Controller
             'sale_id' => 'required|exists:sales,id',
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
+            'return_type' => 'required|in:refund,exchange',
+            'item_condition' => 'required|in:good,damaged',
             'reason' => 'nullable|string',
         ]);
 
@@ -40,9 +42,14 @@ class ReturnController extends Controller
         if (!$saleDetail) {
             return back()->withInput()->withErrors(['product_id' => 'Produk tidak ditemukan dalam transaksi ini.']);
         }
-        $alreadyReturned = ReturnItem::where('sale_id', $sale->id)->where('product_id', $request->product_id)->sum('quantity');
+        
+        $alreadyReturned = ReturnItem::where('sale_id', $sale->id)
+            ->where('product_id', $request->product_id)
+            ->where('status', '!=', 'rejected')
+            ->sum('quantity');
+            
         if ($request->quantity > ($saleDetail->quantity - $alreadyReturned)) {
-            return back()->withInput()->withErrors(['quantity' => 'Jumlah retur melebihi jumlah pembelian.']);
+            return back()->withInput()->withErrors(['quantity' => 'Jumlah retur melebihi sisa pembelian yang bisa diretur.']);
         }
 
         ReturnItem::create([
@@ -51,6 +58,8 @@ class ReturnController extends Controller
             'branch_id' => $branchId,
             'user_id' => Auth::id(),
             'quantity' => $request->quantity,
+            'return_type' => $request->return_type,
+            'item_condition' => $request->item_condition,
             'reason' => $request->reason,
             'return_date' => now()->toDateString(),
             'status' => 'pending',

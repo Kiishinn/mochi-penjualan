@@ -4,24 +4,46 @@
 @section('page-title', 'Point of Sales (Kasir)')
 
 @section('content')
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <div class="pos-grid">
         
         <!-- Kolom Kiri: Produk -->
         <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
                 <h3>Daftar Produk</h3>
-                <input type="text" id="search-product" class="form-control" style="width: 250px;" placeholder="Cari nama / barcode...">
+                <input type="text" id="search-product" class="form-control" style="max-width: 250px;" placeholder="Cari nama produk...">
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; max-height: 600px; overflow-y: auto; padding-right: 0.5rem;" id="product-grid">
                 @foreach($stocks as $stock)
+                    @php
+                        $discount = $stock->product->discounts->first();
+                        $originalPrice = $stock->product->selling_price;
+                        $finalPrice = $originalPrice;
+                        $discountAmount = 0;
+                        if ($discount) {
+                            if ($discount->discount_type == 'percentage') {
+                                $discountAmount = $finalPrice * ($discount->discount_value / 100);
+                            } else {
+                                $discountAmount = $discount->discount_value;
+                            }
+                            $finalPrice -= $discountAmount;
+                            if ($finalPrice < 0) $finalPrice = 0;
+                        }
+                    @endphp
                     <div class="product-item card" style="padding: 1rem; cursor: pointer; transition: transform 0.1s; border: 1px solid var(--border-color);" 
-                         onclick="addToCart({{ $stock->product->id }}, '{{ addslashes($stock->product->name) }}', {{ $stock->product->selling_price }}, {{ $stock->quantity }})"
-                         data-name="{{ strtolower($stock->product->name) }}" data-barcode="{{ strtolower($stock->product->barcode ?? '') }}">
+                         onclick="addToCart({{ $stock->product->id }}, '{{ addslashes($stock->product->name) }}', {{ $finalPrice }}, {{ $stock->quantity }}, {{ $discountAmount }}, {{ $originalPrice }})"
+                         data-name="{{ strtolower($stock->product->name) }}">
                         
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">{{ $stock->product->barcode ?? '-' }}</div>
-                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; line-height: 1.3;">{{ $stock->product->name }}</div>
-                        <div style="font-size: 0.8125rem; color: var(--accent); font-weight: 700; margin-bottom: 0.5rem;">Rp {{ number_format($stock->product->selling_price, 0, ',', '.') }}</div>
+                        <div style="font-weight: 600; color: var(--text-primary); line-height: 1.3;">{{ $stock->product->name }}</div>
+                        <div style="font-size: 0.7rem; color: var(--accent); margin-bottom: 0.5rem; display: inline-block; padding: 2px 6px; background: rgba(6, 182, 212, 0.1); border-radius: 4px;">{{ $stock->product->category->name ?? 'Umum' }}</div>
+                        <div style="font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem;">
+                            @if($discount)
+                                <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.7rem; margin-right: 0.25rem;">Rp {{ number_format($originalPrice, 0, ',', '.') }}</span>
+                                <span style="color: var(--danger);">Rp {{ number_format($finalPrice, 0, ',', '.') }}</span>
+                            @else
+                                <span style="color: var(--accent);">Rp {{ number_format($finalPrice, 0, ',', '.') }}</span>
+                            @endif
+                        </div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">Stok: {{ $stock->quantity }} {{ $stock->product->unit->name ?? '' }}</div>
                     </div>
                 @endforeach
@@ -88,8 +110,7 @@
             const items = document.querySelectorAll('.product-item');
             items.forEach(item => {
                 const name = item.getAttribute('data-name');
-                const barcode = item.getAttribute('data-barcode');
-                if(name.includes(term) || barcode.includes(term)) {
+                if(name.includes(term)) {
                     item.style.display = 'block';
                 } else {
                     item.style.display = 'none';
@@ -101,7 +122,7 @@
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
         }
 
-        function addToCart(id, name, price, maxStock) {
+        function addToCart(id, name, price, maxStock, discountAmount = 0, originalPrice = 0) {
             const existing = cart.find(item => item.product_id === id);
             if (existing) {
                 if (existing.qty < maxStock) {
@@ -111,7 +132,7 @@
                 }
             } else {
                 if (maxStock > 0) {
-                    cart.push({ product_id: id, name: name, price: price, qty: 1, maxStock: maxStock });
+                    cart.push({ product_id: id, name: name, price: price, qty: 1, maxStock: maxStock, discount_amount: discountAmount, original_price: originalPrice });
                 } else {
                     alert('Stok kosong!');
                 }
@@ -175,7 +196,10 @@
                         <div class="cart-item">
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; font-size: 0.875rem; margin-bottom: 0.25rem;">${item.name}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">${formatRupiah(item.price)}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                    ${item.discount_amount > 0 ? `<span style="text-decoration: line-through; color: var(--text-muted); margin-right: 4px;">${formatRupiah(item.original_price)}</span>` : ''}
+                                    ${formatRupiah(item.price)}
+                                </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <button type="button" class="cart-qty-btn" onclick="updateQty(${item.product_id}, -1)">-</button>

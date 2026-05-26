@@ -13,7 +13,7 @@
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem; margin-bottom:2rem; padding-bottom:1.5rem; border-bottom:1px solid var(--border-color);">
             <div>
                 <p style="font-size:0.8125rem; color:var(--text-muted); margin-bottom:0.25rem;">Tanggal Pengajuan</p>
-                <p style="font-weight:500;">{{ \Carbon\Carbon::parse($stock_transfer->date)->format('d F Y') }}</p>
+                <p style="font-weight:500;">{{ \Carbon\Carbon::parse($stock_transfer->date)->format('d F Y H:i') }} WIB</p>
             </div>
             <div>
                 <p style="font-size:0.8125rem; color:var(--text-muted); margin-bottom:0.25rem;">Cabang Asal</p>
@@ -40,7 +40,6 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h3 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">{{ $stock_transfer->product->name }}</h3>
-                    <p style="margin: 0; color: var(--text-muted);">Barcode: {{ $stock_transfer->product->barcode ?? '-' }}</p>
                 </div>
                 <div style="text-align: right;">
                     <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Jumlah Mutasi</p>

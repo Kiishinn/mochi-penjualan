@@ -13,10 +13,26 @@ class UserController extends Controller
     /**
      * Display a listing of users.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('branch')->orderBy('name')->paginate(10);
-        return view('owner.users.index', compact('users'));
+        $query = User::with('branch');
+        
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+        
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $users = $query->orderBy('name')->paginate(10);
+        $branches = Branch::orderBy('name')->get();
+        return view('owner.users.index', compact('users', 'branches'));
     }
 
     /**
@@ -46,6 +62,8 @@ class UserController extends Controller
                 Rule::requiredIf(in_array($request->role, ['kepala_cabang', 'kasir'])),
                 'exists:branches,id',
             ],
+            'photo_profile' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'photo_ktp' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ], [
             'name.required' => 'Nama wajib diisi.',
             'username.unique' => 'Username sudah digunakan.',
@@ -66,6 +84,13 @@ class UserController extends Controller
         // Owner doesn't need a branch
         if ($validated['role'] === 'owner') {
             $validated['branch_id'] = null;
+        }
+        
+        if ($request->hasFile('photo_profile')) {
+            $validated['photo_profile'] = $request->file('photo_profile')->store('users/profiles', 'public');
+        }
+        if ($request->hasFile('photo_ktp')) {
+            $validated['photo_ktp'] = $request->file('photo_ktp')->store('users/ktps', 'public');
         }
 
         User::create($validated);
@@ -100,6 +125,8 @@ class UserController extends Controller
                 Rule::requiredIf(in_array($request->role, ['kepala_cabang', 'kasir'])),
                 'exists:branches,id',
             ],
+            'photo_profile' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'photo_ktp' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ], [
             'name.required' => 'Nama wajib diisi.',
             'username.unique' => 'Username sudah digunakan.',
@@ -125,6 +152,19 @@ class UserController extends Controller
         // Owner doesn't need a branch
         if ($validated['role'] === 'owner') {
             $validated['branch_id'] = null;
+        }
+
+        if ($request->hasFile('photo_profile')) {
+            if ($user->photo_profile) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->photo_profile);
+            }
+            $validated['photo_profile'] = $request->file('photo_profile')->store('users/profiles', 'public');
+        }
+        if ($request->hasFile('photo_ktp')) {
+            if ($user->photo_ktp) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->photo_ktp);
+            }
+            $validated['photo_ktp'] = $request->file('photo_ktp')->store('users/ktps', 'public');
         }
 
         $user->update($validated);

@@ -27,14 +27,6 @@
             </div>
 
             <div class="form-group">
-                <label for="phone">No. Telepon</label>
-                <input type="text" id="phone" name="phone" class="form-control" value="{{ old('phone') }}">
-                @error('phone')
-                    <p class="form-error">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div class="form-group">
                 <label for="address">Alamat Lengkap</label>
                 <textarea id="address" name="address" class="form-control" rows="3">{{ old('address') }}</textarea>
                 @error('address')

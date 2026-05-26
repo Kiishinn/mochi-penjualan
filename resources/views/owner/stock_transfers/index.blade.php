@@ -23,7 +23,7 @@
                 <tbody>
                     @forelse($transfers as $transfer)
                         <tr>
-                            <td>{{ \Carbon\Carbon::parse($transfer->date)->format('d M Y') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($transfer->date)->format('d M Y H:i') }} WIB</td>
                             <td><div style="font-weight: 500; color: var(--text-primary);">{{ $transfer->reference_number }}</div></td>
                             <td>{{ $transfer->sourceBranch->name ?? '-' }}</td>
                             <td>{{ $transfer->destinationBranch->name ?? '-' }}</td>

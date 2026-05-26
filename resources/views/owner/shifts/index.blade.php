@@ -5,8 +5,24 @@
 
 @section('content')
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 style="margin: 0; color: var(--text-primary);">Riwayat Buka/Tutup Kasir Seluruh Cabang</h3>
+    <div class="card-header">
+        <h3>Riwayat Buka/Tutup Kasir Seluruh Cabang</h3>
+        <div>
+            <form id="filterForm" method="GET" action="{{ route('shifts.index') }}" style="display: flex; gap: 0.5rem; width: 100%;">
+                <select name="branch_id" class="form-control" onchange="this.form.submit()">
+                    <option value="">Semua Cabang</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
+                            {{ $branch->name }}
+                        </option>
+                    @endforeach
+                </select>
+                <input type="text" id="searchInput" name="search" class="form-control" placeholder="Cari nama kasir..." value="{{ request('search') }}" autocomplete="off">
+                @if(request()->hasAny(['search', 'branch_id']) && (request('search') != '' || request('branch_id') != ''))
+                    <a href="{{ route('shifts.index') }}" class="btn btn-secondary btn-sm" style="background: transparent; color: var(--danger); border-color: var(--danger);">Reset</a>
+                @endif
+            </form>
+        </div>
     </div>
 
     <div style="overflow-x: auto;">
@@ -91,4 +107,38 @@
         {{ $shifts->links() }}
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        const filterForm = document.getElementById('filterForm');
+
+        if(searchInput) {
+            if (searchInput.value.length > 0) {
+                const length = searchInput.value.length;
+                if (window.innerWidth > 768) searchInput.focus();
+                searchInput.setSelectionRange(length, length);
+            }
+
+                        searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    filterForm.submit();
+                }, 800);
+            });
+            
+                        window.addEventListener('beforeunload', function() {
+                clearTimeout(searchTimeout);
+            });
+            document.body.addEventListener('click', function(e) {
+                if (e.target.closest('a') || e.target.closest('button')) {
+                    clearTimeout(searchTimeout);
+                }
+            });}
+    });
+</script>
 @endsection
+
+
+

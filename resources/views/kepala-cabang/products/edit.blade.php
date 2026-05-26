@@ -14,11 +14,6 @@
             @method('PUT')
             
             <div class="form-grid">
-                <div class="form-group">
-                    <label for="barcode">Barcode</label>
-                    <input type="text" id="barcode" name="barcode" class="form-control" value="{{ old('barcode', $product->barcode) }}" autofocus>
-                    @error('barcode') <div class="form-error">{{ $message }}</div> @enderror
-                </div>
                 
                 <div class="form-group">
                     <label for="name">Nama Produk <span style="color: #ef4444;">*</span></label>
@@ -49,14 +44,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="purchase_price">Harga Beli <span style="color: #ef4444;">*</span></label>
-                    <input type="number" id="purchase_price" name="purchase_price" class="form-control" value="{{ old('purchase_price', $product->purchase_price) }}" required min="0">
+                    <label for="purchase_price_display">Harga Beli <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="purchase_price_display" class="form-control" value="{{ old('purchase_price', $product->purchase_price) ? number_format(old('purchase_price', $product->purchase_price), 0, ',', '.') : '' }}" required oninput="formatCurrency(this, 'purchase_price')">
+                    <input type="hidden" id="purchase_price" name="purchase_price" value="{{ old('purchase_price', $product->purchase_price) }}">
                     @error('purchase_price') <div class="form-error">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="form-group">
-                    <label for="selling_price">Harga Jual <span style="color: #ef4444;">*</span></label>
-                    <input type="number" id="selling_price" name="selling_price" class="form-control" value="{{ old('selling_price', $product->selling_price) }}" required min="0">
+                    <label for="selling_price_display">Harga Jual <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="selling_price_display" class="form-control" value="{{ old('selling_price', $product->selling_price) ? number_format(old('selling_price', $product->selling_price), 0, ',', '.') : '' }}" required oninput="formatCurrency(this, 'selling_price')">
+                    <input type="hidden" id="selling_price" name="selling_price" value="{{ old('selling_price', $product->selling_price) }}">
                     @error('selling_price') <div class="form-error">{{ $message }}</div> @enderror
                 </div>
 
@@ -79,4 +76,16 @@
             </div>
         </form>
     </div>
+
+    <script>
+        function formatCurrency(input, hiddenId) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            document.getElementById(hiddenId).value = value;
+            if (value) {
+                input.value = new Intl.NumberFormat('id-ID').format(value);
+            } else {
+                input.value = '';
+            }
+        }
+    </script>
 @endsection

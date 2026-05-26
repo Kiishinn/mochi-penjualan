@@ -13,11 +13,22 @@ use Illuminate\Support\Facades\DB;
 
 class StockTransferController extends Controller
 {
-    public function index() {
+    public function index(Request $request) {
         $branchId = Auth::user()->branch_id;
-        $transfers = StockTransfer::with(['fromBranch', 'toBranch', 'product', 'creator'])
-            ->where('from_branch_id', $branchId)->orWhere('to_branch_id', $branchId)
-            ->latest()->paginate(10);
+        $query = StockTransfer::with(['fromBranch', 'toBranch', 'product', 'creator'])
+            ->where(function($q) use ($branchId) {
+                $q->where('from_branch_id', $branchId)->orWhere('to_branch_id', $branchId);
+            });
+            
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->whereHas('product', function($q2) use ($request) {
+                    $q2->where('name', 'like', '%' . $request->search . '%');
+                })->orWhere('notes', 'like', '%' . $request->search . '%');
+            });
+        }
+            
+        $transfers = $query->latest()->paginate(10);
         return view('kepala-cabang.stock-transfers.index', compact('transfers'));
     }
 
@@ -32,31 +43,39 @@ class StockTransferController extends Controller
     public function store(Request $request) {
         $request->validate([
             'to_branch_id' => 'required|exists:branches,id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
             'date' => 'required|date',
             'note' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
         ]);
 
         $branchId = Auth::user()->branch_id;
-        $stock = Stock::where('branch_id', $branchId)->where('product_id', $request->product_id)->first();
 
-        if (!$stock || $stock->quantity < $request->quantity) {
-            return back()->withInput()->withErrors(['quantity' => 'Stok cabang asal tidak mencukupi.']);
+        // Validasi stok dulu
+        foreach ($request->items as $item) {
+            $stock = Stock::where('branch_id', $branchId)->where('product_id', $item['product_id'])->first();
+            if (!$stock || $stock->quantity < $item['quantity']) {
+                return back()->withInput()->withErrors(['items' => 'Stok cabang asal tidak mencukupi untuk salah satu produk yang dipilih.']);
+            }
         }
 
-        StockTransfer::create([
-            'from_branch_id' => $branchId,
-            'to_branch_id' => $request->to_branch_id,
-            'product_id' => $request->product_id,
-            'quantity' => $request->quantity,
-            'date' => $request->date,
-            'status' => 'pending',
-            'note' => $request->note,
-            'created_by' => Auth::id(),
-        ]);
+        DB::transaction(function () use ($request, $branchId) {
+            foreach ($request->items as $item) {
+                StockTransfer::create([
+                    'from_branch_id' => $branchId,
+                    'to_branch_id' => $request->to_branch_id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'date' => $request->date,
+                    'status' => 'pending',
+                    'note' => $request->note,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+        });
 
-        return redirect()->route('kepala-cabang.stock-transfers.index')->with('success', 'Perpindahan barang berhasil dicatat. Menunggu persetujuan.');
+        return redirect()->route('kepala-cabang.stock-transfers.index')->with('success', 'Batch Perpindahan barang berhasil dicatat. Menunggu persetujuan.');
     }
 
     public function edit(StockTransfer $stock_transfer) {

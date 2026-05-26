@@ -15,7 +15,7 @@
             </a>
         </div>
 
-        <form method="POST" action="{{ route('users.update', $user->id) }}">
+        <form method="POST" action="{{ route('users.update', $user->id) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -99,6 +99,36 @@
                 <div class="form-group" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 0.5rem;">
                     <input type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }} style="width: 1rem; height: 1rem; accent-color: var(--primary);">
                     <label for="is_active" style="margin-bottom: 0; cursor: pointer;">Akun Aktif (Bisa Login)</label>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group">
+                    <label for="photo_profile">Foto Profil (Ganti jika perlu)</label>
+                    @if($user->photo_profile)
+                        <div style="margin-bottom: 0.5rem;">
+                            <img src="{{ Storage::url($user->photo_profile) }}" alt="Avatar" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                    @endif
+                    <input type="file" id="photo_profile" name="photo_profile" class="form-control" accept="image/*">
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Biarkan kosong jika tidak ingin mengubah</small>
+                    @error('photo_profile')
+                        <p class="form-error">{{ $message }}</p>
+                    @enderror
+                </div>
+                
+                <div class="form-group">
+                    <label for="photo_ktp">Foto KTP (Arsip)</label>
+                    @if($user->photo_ktp)
+                        <div style="margin-bottom: 0.5rem;">
+                            <a href="{{ Storage::url($user->photo_ktp) }}" target="_blank" class="btn btn-sm" style="background: rgba(34, 197, 94, 0.1); color: var(--success); border-color: var(--success);">Lihat KTP Saat Ini</a>
+                        </div>
+                    @endif
+                    <input type="file" id="photo_ktp" name="photo_ktp" class="form-control" accept="image/*">
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Biarkan kosong jika tidak ingin mengubah</small>
+                    @error('photo_ktp')
+                        <p class="form-error">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 

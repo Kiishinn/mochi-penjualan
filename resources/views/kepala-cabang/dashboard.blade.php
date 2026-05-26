@@ -50,7 +50,6 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Barcode</th>
                         <th>Nama Produk</th>
                         <th style="text-align: center;">Min. Stok</th>
                         <th style="text-align: center;">Sisa Stok</th>
@@ -59,7 +58,6 @@
                 <tbody>
                     @forelse($lowStocks as $stock)
                         <tr>
-                            <td>{{ $stock->product->barcode ?? '-' }}</td>
                             <td><div style="font-weight: 500; color: var(--text-primary);">{{ $stock->product->name ?? '-' }}</div></td>
                             <td style="text-align: center;">{{ $stock->product->minimum_stock }}</td>
                             <td style="text-align: center;">

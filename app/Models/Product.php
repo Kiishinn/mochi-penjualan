@@ -28,6 +28,21 @@ class Product extends Model
         return $this->hasMany(SaleDetail::class);
     }
 
+    public function discounts()
+    {
+        return $this->hasMany(Discount::class);
+    }
+
+    public function activeDiscount($branchId)
+    {
+        return $this->discounts()
+            ->where('branch_id', $branchId)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->first();
+    }
+
     public function stockIns()
     {
         return $this->hasMany(StockIn::class);

@@ -13,7 +13,17 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
             Simpan PDF
         </button>
-        <a href="{{ route('kasir.transactions.index') }}" class="btn btn-secondary" style="margin-left: 0.5rem;">Kembali</a>
+        <a href="{{ $backUrl ?? url()->previous() }}" class="btn btn-secondary" style="margin-left: 0.5rem;">Kembali</a>
+        
+        @if($transaction->created_at->diffInMinutes(now()) <= 15 && $transaction->returnItems->count() == 0)
+            <form action="{{ route('kasir.transactions.void', $transaction->id) }}" method="POST" class="form-delete" style="margin-left: auto;">
+                @csrf
+                <button type="submit" class="btn" style="background: var(--danger); color: white; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                    Batalkan Transaksi (Void)
+                </button>
+            </form>
+        @endif
     </div>
 
     <!-- Area Struk untuk diprint -->
@@ -37,12 +47,25 @@
         <div style="margin-bottom: 1rem; border-bottom: 1px dashed #000; padding-bottom: 0.5rem;">
             <table style="width: 100%; font-size: 0.875rem; border-collapse: collapse;">
                 @foreach($transaction->details as $detail)
+                    @php
+                        $returnedQty = $transaction->returnItems->where('product_id', $detail->product_id)->where('status', 'approved')->sum('quantity');
+                    @endphp
                     <tr>
-                        <td colspan="3" style="padding-bottom: 0.25rem;">{{ $detail->product->name }}</td>
+                        <td colspan="3" style="padding-bottom: 0.25rem;">
+                            {{ $detail->product->name }}
+                            @if($returnedQty > 0)
+                                <span style="color: var(--danger); font-size: 0.75rem; font-weight: bold; margin-left: 5px;">(Diretur: {{ $returnedQty }})</span>
+                            @endif
+                        </td>
                     </tr>
                     <tr>
                         <td style="padding-bottom: 0.5rem;">{{ $detail->quantity }} x</td>
-                        <td style="padding-bottom: 0.5rem; text-align: right;">{{ number_format($detail->price, 0, ',', '.') }}</td>
+                        <td style="padding-bottom: 0.5rem; text-align: right;">
+                            @if(isset($detail->discount_amount) && $detail->discount_amount > 0)
+                                <span style="text-decoration: line-through; color: #888; font-size: 0.75rem; display: block;">{{ number_format($detail->price + $detail->discount_amount, 0, ',', '.') }}</span>
+                            @endif
+                            {{ number_format($detail->price, 0, ',', '.') }}
+                        </td>
                         <td style="padding-bottom: 0.5rem; text-align: right;">{{ number_format($detail->subtotal, 0, ',', '.') }}</td>
                     </tr>
                 @endforeach

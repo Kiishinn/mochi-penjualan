@@ -31,4 +31,9 @@ class Sale extends Model
     {
         return $this->belongsTo(Shift::class);
     }
+
+    public function returnItems()
+    {
+        return $this->hasMany(ReturnItem::class);
+    }
 }

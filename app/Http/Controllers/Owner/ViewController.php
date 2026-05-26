@@ -13,38 +13,127 @@ use App\Models\StockOut;
 use App\Models\StockTransfer;
 use App\Models\Supplier;
 use App\Models\Unit;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 
 class ViewController extends Controller
 {
-    public function categories() { return view('owner.categories.index', ['categories' => Category::orderBy('name')->paginate(10)]); }
-    public function units() { return view('owner.units.index', ['units' => Unit::orderBy('name')->paginate(10)]); }
-    public function suppliers() { return view('owner.suppliers.index', ['suppliers' => Supplier::orderBy('name')->paginate(10)]); }
-    public function products() { return view('owner.products.index', ['products' => Product::with(['category', 'unit'])->orderBy('name')->paginate(10)]); }
-
-    public function stockIns() {
-        $stockIns = StockIn::with(['branch', 'product', 'supplier', 'creator'])->latest()->paginate(10);
-        return view('owner.stock-ins.index', compact('stockIns'));
+    public function categories(Request $request) { 
+        $query = Category::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        return view('owner.categories.index', ['categories' => $query->orderBy('name')->paginate(10)]); 
+    }
+    public function units(Request $request) { 
+        $query = Unit::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('symbol', 'like', '%' . $request->search . '%');
+        }
+        return view('owner.units.index', ['units' => $query->orderBy('name')->paginate(10)]); 
+    }
+    public function suppliers(Request $request) { 
+        $query = Supplier::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('contact_person', 'like', '%' . $request->search . '%')
+                  ->orWhere('phone', 'like', '%' . $request->search . '%');
+        }
+        return view('owner.suppliers.index', ['suppliers' => $query->orderBy('name')->paginate(10)]); 
+    }
+    public function products(Request $request) { 
+        $query = Product::with(['category', 'unit']);
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        return view('owner.products.index', ['products' => $query->orderBy('name')->paginate(10)]); 
     }
 
-    public function stockOuts() {
-        $stockOuts = StockOut::with(['branch', 'product', 'creator'])->latest()->paginate(10);
-        return view('owner.stock-outs.index', compact('stockOuts'));
+    public function stockIns(Request $request) {
+        $query = StockIn::with(['branch', 'product', 'supplier', 'creator']);
+        if ($request->filled('search')) {
+            $query->whereHas('product', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
+            })->orWhere('notes', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+        $stockIns = $query->latest()->paginate(10);
+        $branches = Branch::orderBy('name')->get();
+        return view('owner.stock-ins.index', compact('stockIns', 'branches'));
     }
 
-    public function stockTransfers() {
-        $transfers = StockTransfer::with(['fromBranch', 'toBranch', 'product', 'creator'])->latest()->paginate(10);
-        return view('owner.stock-transfers.index', compact('transfers'));
+    public function stockOuts(Request $request) {
+        $query = StockOut::with(['branch', 'product', 'creator']);
+        if ($request->filled('search')) {
+            $query->whereHas('product', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
+            })->orWhere('notes', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+        $stockOuts = $query->latest()->paginate(10);
+        $branches = Branch::orderBy('name')->get();
+        return view('owner.stock-outs.index', compact('stockOuts', 'branches'));
     }
 
-    public function sales() {
-        $sales = Sale::with(['branch', 'user', 'details'])->latest()->paginate(10);
-        return view('owner.sales.index', compact('sales'));
+    public function stockTransfers(Request $request) {
+        $query = StockTransfer::with(['fromBranch', 'toBranch', 'product', 'creator']);
+        if ($request->filled('search')) {
+            $query->whereHas('product', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
+            })->orWhere('notes', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('branch_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('from_branch_id', $request->branch_id)
+                  ->orWhere('to_branch_id', $request->branch_id);
+            });
+        }
+        $transfers = $query->latest()->paginate(10);
+        $branches = Branch::orderBy('name')->get();
+        return view('owner.stock-transfers.index', compact('transfers', 'branches'));
     }
 
-    public function returnItems() {
-        $returnItems = ReturnItem::with(['sale', 'product', 'branch', 'user'])->latest()->paginate(10);
-        return view('owner.returns.index', compact('returnItems'));
+    public function sales(Request $request) {
+        $query = Sale::with(['branch', 'user', 'details']);
+        if ($request->filled('search')) {
+            $query->where('receipt_number', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('user', function($q) use ($request) {
+                      $q->where('name', 'like', '%' . $request->search . '%');
+                  });
+        }
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+        $sales = $query->latest()->paginate(10);
+        $branches = Branch::orderBy('name')->get();
+        return view('owner.sales.index', compact('sales', 'branches'));
+    }
+
+    public function showTransaction(Sale $sale) {
+        $sale->load(['branch', 'user', 'details.product']);
+        $backUrl = route('transactions.index');
+        return view('kasir.transactions.show', ['transaction' => $sale, 'backUrl' => $backUrl]);
+    }
+
+    public function returnItems(Request $request) {
+        $query = ReturnItem::with(['sale', 'product', 'branch', 'user']);
+        if ($request->filled('search')) {
+            $query->where('reason', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('sale', function($q) use ($request) {
+                      $q->where('receipt_number', 'like', '%' . $request->search . '%');
+                  });
+        }
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+        $returnItems = $query->latest()->paginate(10);
+        $branches = Branch::orderBy('name')->get();
+        return view('owner.returns.index', compact('returnItems', 'branches'));
     }
 
     public function reportSales(Request $request) {
@@ -96,43 +185,7 @@ class ViewController extends Controller
         ));
     }
 
-    public function exportSalesCsv(Request $request) {
-        $query = Sale::with(['branch', 'user', 'details.product']);
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('transaction_date', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
-        }
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
-        }
-        
-        $sales = $query->orderBy('transaction_date')->get();
-        
-        $filename = "Laporan_Penjualan_" . date('Ymd_His') . ".csv";
-        $handle = fopen('php://output', 'w');
-        
-        // Add BOM for Excel UTF-8
-        fputs($handle, $bom =(chr(0xEF) . chr(0xBB) . chr(0xBF)));
-
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        
-        fputcsv($handle, ['Tanggal', 'No Invoice', 'Cabang', 'Kasir', 'Total Harga', 'Tunai', 'Kembalian']);
-        
-        foreach ($sales as $sale) {
-            fputcsv($handle, [
-                $sale->transaction_date,
-                $sale->invoice_number,
-                $sale->branch->name ?? '-',
-                $sale->user->name ?? '-',
-                $sale->total_price,
-                $sale->paid_amount,
-                $sale->change_amount
-            ]);
-        }
-        
-        fclose($handle);
-        exit;
-    }
+    
 
     public function reportStocks(Request $request) {
         $query = Stock::with(['branch', 'product.category', 'product.unit'])
@@ -141,6 +194,12 @@ class ViewController extends Controller
 
         if ($request->filled('branch_id')) {
             $query->where('stocks.branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('products.name', 'like', '%' . $request->search . '%');
+            });
         }
 
         if ($request->filled('status')) {
@@ -169,68 +228,123 @@ class ViewController extends Controller
         return view('owner.reports.stocks', compact('stocks', 'branches', 'totalSku', 'totalHabis', 'totalMenipis', 'totalAset'));
     }
 
-    public function exportStocksCsv(Request $request) {
-        $query = Stock::with(['branch', 'product.category', 'product.unit'])
-            ->select('stocks.*')
-            ->join('products', 'stocks.product_id', '=', 'products.id');
+    
+
+    public function shifts(Request $request)
+    {
+        $query = \App\Models\Shift::with(['user', 'branch']);
+        if ($request->filled('search')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
+            });
+        }
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+        $shifts = $query->latest('start_time')->paginate(15);
+        $branches = Branch::orderBy('name')->get();
+            
+        return view('owner.shifts.index', compact('shifts', 'branches'));
+    }
+
+    public function bestSellers(Request $request) {
+        $query = \App\Models\Sale::query();
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('transaction_date', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        }
+        
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $topProducts = \App\Models\SaleDetail::selectRaw('product_id, SUM(quantity) as total_qty')
+            ->whereIn('sale_id', clone $query->select('id'))
+            ->groupBy('product_id')
+            ->orderByDesc('total_qty')
+            ->with(['product.category', 'product.unit'])
+            ->paginate(20);
+            
+        $branches = \App\Models\Branch::orderBy('name')->get();
+
+        return view('owner.reports.best-sellers', compact('topProducts', 'branches'));
+    }
+
+    public function lowStock(Request $request) {
+        $query = \App\Models\Stock::with(['product.category', 'product.unit', 'branch'])
+            ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->whereColumn('stocks.quantity', '<=', 'products.minimum_stock');
 
         if ($request->filled('branch_id')) {
             $query->where('stocks.branch_id', $request->branch_id);
         }
 
-        if ($request->filled('status')) {
-            if ($request->status == 'habis') {
-                $query->where('stocks.quantity', 0);
-            } elseif ($request->status == 'menipis') {
-                $query->where('stocks.quantity', '>', 0)
-                      ->whereRaw('stocks.quantity <= products.minimum_stock');
-            } elseif ($request->status == 'aman') {
-                $query->whereRaw('stocks.quantity > products.minimum_stock');
-            }
-        }
-        
-        $stocks = $query->orderBy('stocks.branch_id')->get();
-        
-        $filename = "Laporan_Stok_" . date('Ymd_His') . ".csv";
-        $handle = fopen('php://output', 'w');
-        
-        fputs($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        
-        fputcsv($handle, ['Cabang', 'Barcode', 'Nama Produk', 'Kategori', 'Satuan', 'Min Stok', 'Stok Aktual', 'Harga Modal', 'Valuasi Aset', 'Status']);
-        
-        foreach ($stocks as $s) {
-            $status = 'Aman';
-            if($s->quantity == 0) $status = 'Habis';
-            elseif($s->quantity <= $s->product->minimum_stock) $status = 'Menipis';
+        $lowStocks = $query->select('stocks.*')
+            ->orderBy('stocks.quantity', 'asc')
+            ->get();
             
-            $aset = $s->quantity * $s->product->purchase_price;
-
-            fputcsv($handle, [
-                $s->branch->name ?? '-',
-                $s->product->barcode ?? '-',
-                $s->product->name ?? '-',
-                $s->product->category->name ?? '-',
-                $s->product->unit->name ?? '-',
-                $s->product->minimum_stock,
-                $s->quantity,
-                $s->product->purchase_price,
-                $aset,
-                $status
-            ]);
-        }
-        
-        fclose($handle);
-        exit;
+        $branches = \App\Models\Branch::orderBy('name')->get();
+            
+        return view('owner.reports.low-stock', compact('lowStocks', 'branches'));
     }
 
-    public function shifts(Request $request)
-    {
-        $shifts = \App\Models\Shift::with(['user', 'branch'])
-            ->latest('start_time')
-            ->paginate(15);
+    public function stockCard($branch_id, $product_id) {
+        $product = \App\Models\Product::findOrFail($product_id);
+        $branch = \App\Models\Branch::findOrFail($branch_id);
+        
+        $events = collect();
+        
+        // Stock Ins
+        \App\Models\StockIn::where('branch_id', $branch_id)->where('product_id', $product_id)
+            ->get()->each(function ($item) use (&$events) {
+                $events->push(['date' => $item->date, 'type' => 'Stok Masuk', 'qty' => $item->quantity, 'ref' => 'Supplier: ' . ($item->supplier->name ?? '-')]);
+            });
             
-        return view('owner.shifts.index', compact('shifts'));
+        // Stock Outs
+        \App\Models\StockOut::where('branch_id', $branch_id)->where('product_id', $product_id)
+            ->get()->each(function ($item) use (&$events) {
+                $events->push(['date' => $item->date, 'type' => 'Stok Keluar', 'qty' => -$item->quantity, 'ref' => 'Alasan: ' . ($item->reason ?? '-')]);
+            });
+            
+        // Transfers Out
+        \App\Models\StockTransfer::where('from_branch_id', $branch_id)->where('product_id', $product_id)->where('status', 'approved')
+            ->get()->each(function ($item) use (&$events) {
+                $events->push(['date' => $item->updated_at, 'type' => 'Transfer Keluar', 'qty' => -$item->quantity, 'ref' => 'Ke Cabang: ' . ($item->toBranch->name ?? '-')]);
+            });
+            
+        // Transfers In
+        \App\Models\StockTransfer::where('to_branch_id', $branch_id)->where('product_id', $product_id)->where('status', 'approved')
+            ->get()->each(function ($item) use (&$events) {
+                $events->push(['date' => $item->updated_at, 'type' => 'Transfer Masuk', 'qty' => $item->quantity, 'ref' => 'Dari Cabang: ' . ($item->fromBranch->name ?? '-')]);
+            });
+            
+        // Sales
+        \App\Models\SaleDetail::whereHas('sale', function($q) use ($branch_id) {
+            $q->where('branch_id', $branch_id);
+        })->where('product_id', $product_id)->get()->each(function ($item) use (&$events) {
+            $events->push(['date' => $item->sale->transaction_date, 'type' => 'Penjualan', 'qty' => -$item->quantity, 'ref' => 'Invoice: ' . $item->sale->invoice_number]);
+        });
+        
+        // Returns
+        \App\Models\ReturnItem::where('branch_id', $branch_id)
+            ->where('status', 'approved')
+            ->where('product_id', $product_id)
+            ->get()->each(function ($item) use (&$events) {
+            if ($item->item_condition === 'good' && $item->return_type !== 'exchange') {
+                $events->push(['date' => $item->updated_at, 'type' => 'Retur Masuk', 'qty' => $item->quantity, 'ref' => 'Retur Invoice: ' . ($item->sale->invoice_number ?? '-')]);
+            }
+        });
+        
+        $sortedEvents = $events->sortBy('date')->values();
+        
+        $balance = 0;
+        $sortedEvents = $sortedEvents->map(function($event) use (&$balance) {
+            $balance += $event['qty'];
+            $event['balance'] = $balance;
+            return $event;
+        });
+
+        return view('owner.reports.stock-card', compact('product', 'branch', 'sortedEvents'));
     }
 }
+

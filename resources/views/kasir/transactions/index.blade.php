@@ -31,7 +31,15 @@
                         <tr>
                             <td>{{ date('d/m/Y H:i', strtotime($sale->transaction_date)) }}</td>
                             <td>
-                                <div style="font-weight: 500; color: var(--text-primary);">{{ $sale->invoice_number }}</div>
+                                <div style="font-weight: 500; color: var(--text-primary);">
+                                    {{ $sale->invoice_number }}
+                                    @php
+                                        $totalReturned = $sale->returnItems->where('status', 'approved')->sum('quantity');
+                                    @endphp
+                                    @if($totalReturned > 0)
+                                        <span class="badge" style="background: var(--danger); font-size: 0.65rem; padding: 2px 6px; margin-left: 5px;">Diretur ({{ $totalReturned }} item)</span>
+                                    @endif
+                                </div>
                             </td>
                             <td>{{ $sale->details->sum('quantity') }}</td>
                             <td style="text-align: right; font-weight: 600; color: var(--accent);">Rp {{ number_format($sale->total_price, 0, ',', '.') }}</td>

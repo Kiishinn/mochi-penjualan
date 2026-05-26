@@ -5,14 +5,22 @@
 
 @section('content')
     <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
             <h3>Daftar Cabang</h3>
-            <a href="{{ route('branches.create') }}" class="btn btn-primary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Tambah Cabang
-            </a>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-left: auto;">
+                <form id="filterForm" method="GET" action="{{ route('branches.index') }}" style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="searchInput" name="search" class="form-control" placeholder="Cari nama/alamat..." value="{{ request('search') }}" style="width: 250px; padding: 0.25rem 0.5rem;" autocomplete="off">
+                    @if(request('search') != '')
+                        <a href="{{ route('branches.index') }}" class="btn btn-secondary btn-sm" style="background: transparent; color: var(--danger); border-color: var(--danger);">Reset</a>
+                    @endif
+                </form>
+                <a href="{{ route('branches.create') }}" class="btn btn-primary btn-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Tambah Cabang
+                </a>
+            </div>
         </div>
 
         @if(session('error'))
@@ -30,7 +38,6 @@
                     <tr>
                         <th>Nama Cabang</th>
                         <th>Alamat & Keterangan</th>
-                        <th>No. Telepon</th>
                         <th>Status</th>
                         <th>Total User</th>
                         <th style="text-align: right;">Aksi</th>
@@ -45,12 +52,9 @@
                             <td>
                                 <div>{{ $branch->address ?? '-' }}</div>
                                 @if($branch->description)
-                                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-                                        <i>{{ $branch->description }}</i>
-                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">{{ $branch->description }}</div>
                                 @endif
                             </td>
-                            <td>{{ $branch->phone ?? '-' }}</td>
                             <td>
                                 @if($branch->is_active)
                                     <span class="badge badge-kasir">Beroperasi</span>
@@ -75,14 +79,51 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 2rem;">Belum ada data cabang.</td>
+                            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                Belum ada data cabang.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
-            <div class="mt-4">
-                {{ $branches->links() }}
-            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            {{ $branches->links() }}
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let searchTimeout;
+            const searchInput = document.getElementById('searchInput');
+            const filterForm = document.getElementById('filterForm');
+
+            if(searchInput) {
+                if (searchInput.value.length > 0) {
+                    const length = searchInput.value.length;
+                    if (window.innerWidth > 768) searchInput.focus();
+                    searchInput.setSelectionRange(length, length);
+                }
+
+                            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    filterForm.submit();
+                }, 800);
+            });
+            
+                        window.addEventListener('beforeunload', function() {
+                clearTimeout(searchTimeout);
+            });
+            document.body.addEventListener('click', function(e) {
+                if (e.target.closest('a') || e.target.closest('button')) {
+                    clearTimeout(searchTimeout);
+                }
+            });}
+        });
+    </script>
 @endsection
+
+
+

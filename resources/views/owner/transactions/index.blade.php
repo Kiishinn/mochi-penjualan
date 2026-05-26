@@ -24,7 +24,7 @@
                 <tbody>
                     @forelse($transactions as $trx)
                         <tr>
-                            <td>{{ \Carbon\Carbon::parse($trx->date)->format('d M Y') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($trx->date)->format('d M Y H:i') }} WIB</td>
                             <td><div style="font-weight: 500; color: var(--text-primary);">{{ $trx->invoice_number }}</div></td>
                             <td>{{ $trx->branch->name ?? '-' }}</td>
                             <td>{{ $trx->user->name ?? '-' }}</td>

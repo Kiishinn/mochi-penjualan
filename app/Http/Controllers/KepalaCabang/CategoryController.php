@@ -8,8 +8,12 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index() {
-        return view('kepala-cabang.categories.index', ['categories' => Category::orderBy('name')->paginate(10)]);
+    public function index(Request $request) {
+        $query = Category::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        return view('kepala-cabang.categories.index', ['categories' => $query->orderBy('name')->paginate(10)]);
     }
     public function create() { return view('kepala-cabang.categories.create'); }
     public function store(Request $request) {
