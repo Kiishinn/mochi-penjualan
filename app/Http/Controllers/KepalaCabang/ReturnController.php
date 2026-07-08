@@ -30,51 +30,7 @@ class ReturnController extends Controller
         return view('kepala-cabang.returns.index', compact('returnItems'));
     }
 
-    public function create() {
-        $branchId = Auth::user()->branch_id;
-        $sales = Sale::with(['details.product', 'returnItems'])->where('branch_id', $branchId)->latest()->get();
-        return view('kepala-cabang.returns.create', compact('sales'));
-    }
 
-    public function store(Request $request) {
-        $request->validate([
-            'sale_id' => 'required|exists:sales,id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            'reason' => 'nullable|string',
-        ]);
-
-        $branchId = Auth::user()->branch_id;
-        $sale = Sale::where('branch_id', $branchId)->findOrFail($request->sale_id);
-
-        // Validasi qty retur vs qty beli
-        $saleDetail = SaleDetail::where('sale_id', $sale->id)->where('product_id', $request->product_id)->first();
-        if (!$saleDetail) {
-            return back()->withInput()->withErrors(['product_id' => 'Produk tidak ditemukan dalam transaksi ini.']);
-        }
-        
-        $alreadyReturned = ReturnItem::where('sale_id', $sale->id)
-            ->where('product_id', $request->product_id)
-            ->where('status', '!=', 'rejected')
-            ->sum('quantity');
-            
-        if ($request->quantity > ($saleDetail->quantity - $alreadyReturned)) {
-            return back()->withInput()->withErrors(['quantity' => 'Jumlah retur melebihi sisa pembelian yang bisa diretur.']);
-        }
-
-        ReturnItem::create([
-            'sale_id' => $request->sale_id,
-            'product_id' => $request->product_id,
-            'branch_id' => $branchId,
-            'user_id' => Auth::id(),
-            'quantity' => $request->quantity,
-            'reason' => $request->reason,
-            'return_date' => now()->toDateString(),
-            'status' => 'pending',
-        ]);
-
-        return redirect()->route('kepala-cabang.returns.index')->with('success', 'Pengajuan retur berhasil dicatat.');
-    }
 
     public function show(ReturnItem $return) {
         if ($return->branch_id !== Auth::user()->branch_id) abort(403);

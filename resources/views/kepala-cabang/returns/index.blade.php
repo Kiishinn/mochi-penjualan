@@ -8,10 +8,6 @@
         <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <h3>Riwayat Pengajuan Retur Barang (Dari Pelanggan)</h3>
-                <a href="{{ route('kepala-cabang.returns.create') }}" class="btn btn-primary btn-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                    Buat Pengajuan Retur
-                </a>
             </div>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-left: auto;">
                 <form id="filterForm" method="GET" action="{{ route('kepala-cabang.returns.index') }}" style="display: flex; gap: 0.5rem;">

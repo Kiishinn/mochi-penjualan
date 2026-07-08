@@ -54,9 +54,7 @@ Route::middleware(['auth', 'role:kepala_cabang'])->prefix('kepala-cabang')->name
     Route::post('/stock-transfers/{stock_transfer}/approve', [\App\Http\Controllers\KepalaCabang\StockTransferController::class, 'approve'])->name('stock-transfers.approve');
     Route::post('/stock-transfers/{stock_transfer}/reject', [\App\Http\Controllers\KepalaCabang\StockTransferController::class, 'reject'])->name('stock-transfers.reject');
     Route::post('/stock-transfers/{stock_transfer}/receive', [\App\Http\Controllers\KepalaCabang\StockTransferController::class, 'receive'])->name('stock-transfers.receive');
-    Route::resource('returns', \App\Http\Controllers\KepalaCabang\ReturnController::class)->except(['edit', 'destroy']);
-    Route::post('/returns/{returnItem}/approve', [\App\Http\Controllers\KepalaCabang\ReturnController::class, 'approve'])->name('returns.approve');
-    Route::post('/returns/{returnItem}/reject', [\App\Http\Controllers\KepalaCabang\ReturnController::class, 'reject'])->name('returns.reject');
+    Route::resource('returns', \App\Http\Controllers\KepalaCabang\ReturnController::class)->only(['index', 'show', 'update']);
 
     Route::resource('discounts', \App\Http\Controllers\KepalaCabang\DiscountController::class)->only(['index', 'create', 'store', 'destroy']);
 
